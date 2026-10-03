@@ -117,11 +117,12 @@ fi
         printf 'export HF_HOME=%q\n' "$WORKSHOP_HF_HOME"
     fi
     if [[ -n "$WORKSHOP_MODULE" ]]; then
-        # Only load the module if llmflux isn't already available, so sourcing
-        # this file twice is harmless.
-        printf 'if ! command -v llmflux >/dev/null 2>&1; then\n'
-        printf '    module load %q && conda activate base\n' "$WORKSHOP_MODULE"
-        printf 'fi\n'
+        # Always load, even if an `llmflux` command is already on PATH: a
+        # personal `pip install --user llmflux` puts one in ~/.local/bin while
+        # the python on PATH can't import the library, and make_prompts.py
+        # then fails. Loading again is a no-op in Lmod, so sourcing this file
+        # twice is still harmless, and the module's env goes first on PATH.
+        printf 'module load %q && conda activate base\n' "$WORKSHOP_MODULE"
     fi
     # After the module load, so it overrides whatever the module file sets.
     if [[ -n "$WORKSHOP_CONTAINERS_DIR" ]]; then

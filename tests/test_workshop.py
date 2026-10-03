@@ -484,13 +484,29 @@ class TestSetupWorkshop(ShellTestCase):
         self.assertNotIn("LLMFLUX_CONTAINERS_DIR", env_text)
         self.assertNotIn("module load", env_text)
 
-    def test_module_is_loaded_only_when_llmflux_missing(self):
+    def test_module_is_loaded_even_when_llmflux_is_already_on_path(self):
+        # Regression: on Delta, a personal ~/.local/bin/llmflux made the old
+        # "only if llmflux is missing" guard skip the module, so python couldn't
+        # import llmflux and make_prompts.py crashed.
         conf = self.write_conf(FILLED_CONF.format(hf_home="", samples="", containers="")
                                .replace('WORKSHOP_MODULE=""', 'WORKSHOP_MODULE="llmflux"'))
         self.assertEqual(self.setup_workshop(conf).returncode, 0)
-        env_text = (self.home / "llmflux-workshop" / "workshop.env").read_text()
-        self.assertIn("if ! command -v llmflux", env_text)
-        self.assertIn("module load llmflux && conda activate base", env_text)
+        dest = self.home / "llmflux-workshop"
+
+        # Fakes for Lmod's `module`, conda, and a stray personal llmflux.
+        bin_dir = self.tmp / "bin"
+        bin_dir.mkdir()
+        calls = self.tmp / "calls.txt"
+        for name in ["module", "conda", "llmflux"]:
+            fake = bin_dir / name
+            fake.write_text(f'#!/usr/bin/env bash\necho "{name} $*" >> "{calls}"\n')
+            fake.chmod(0o755)
+        result = subprocess.run(
+            ["bash", "-c", f'source "{dest}/workshop.env"'],
+            env=self.env(PATH=f"{bin_dir}:{os.environ['PATH']}"), capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls.read_text().splitlines(), ["module load llmflux", "conda activate base"])
 
     def test_containers_dir_overrides_module_default(self):
         # The module may set its own LLMFLUX_CONTAINERS_DIR; the workshop value
