@@ -9,8 +9,10 @@ about 1.5 minutes. The talk contains one small live demo, started at the
 beginning and shown near the end. The full session plan, with the hands-on, is in
 [`facilitator/README.md`](../facilitator/README.md).
 
-Fill the `[from dry run]` placeholders with numbers measured on the cluster, not
-estimates. A specific measured number is more credible than a round guess.
+The numbers below were measured in the Oct 2 dry run (Qwen2.5-7B-Instruct, one
+GPU, model already in the shared cache, no reservation). On the day, quote the
+numbers from your own job if they differ: `sacct -j <id> -o Elapsed` and the
+"Run metrics" line from `show_results.py`.
 
 ## Who's in the room
 
@@ -86,15 +88,24 @@ beyond chat.
    say more about fine-tuning on Delta.*
 
 9. **The reveal.** Back to the terminal. `llmflux jobs --all`, then
-   `python show_results.py results/all.json`. *"48 requests: [from dry run] min
-   in the queue, [from dry run] to load the model, [from dry run] seconds to
-   answer them all."* Linger on the **extract** section.
+   `python show_results.py results/all.json`. *"48 requests: seconds in the
+   queue, about a minute to start the container and load the model, then
+   10 seconds to answer them all."* (That's DeltaAI. On Delta's A100s, loading
+   took about 2 minutes and answering about 25 seconds.) The point to land: **the
+   model loading dominates**, so one job with many requests beats many small
+   jobs. Linger on the **extract** section.
 
-10. **The lesson: LLM output is data you have to check.** Show the validation line
-    (`48/48 replies usable`, or better, one that isn't). If the dry run produced a
-    label outside the list or a made-up number, put it on this slide. A real
-    failure is more memorable than a clean run. At 16 items you check by eye; at
-    16,000 the check has to be part of the pipeline.
+10. **The lesson: LLM output is data you have to check.** Show the validation line:
+    `48/48 replies usable`. Then show what it *didn't* catch. In the dry run, every
+    reply passed the format checks, and still (check your own run for its versions):
+    - `"data_size": "null"`: the text "null" instead of a real JSON null, in some rows but not others
+    - genomics `g15`: "sample_size" came back as *230 metagenome-assembled genomes*, which is a result, not a sample size
+    - genomics `g12`: "technology" came back as *deep mutational scanning*, which is where the training data came from; the method is a protein language model
+    - genomics `g14`: a long-read splicing study labeled *Epigenomics*
+
+    Format checks are automatic; correctness checks aren't. At 16 items you check
+    by eye; at 16,000 you sample and spot-check, and you build both kinds of check
+    into the pipeline.
 
 11. **Now you.** The repo link and QR code. *"Open Open OnDemand like yesterday,
     and open this page next to it. Everything I just did, you're about to do."*

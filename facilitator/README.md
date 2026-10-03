@@ -66,23 +66,29 @@ hands-on uses `sample_results/`.
 ## Capacity: will the queue keep up?
 
 Each participant job requests **one GPU**. Slurm allocates whole GPUs, so a
-reserved 4-GPU node (`gpuA100x4` or `ghx4`) runs **4 jobs at once**. One job =
-queue wait + container start + model load + 48 requests. Measure the last three
-in your dry run (`sacct -j <id> --format=Elapsed`). A ~4-minute job is a
-reasonable guess to plan with before you have a real number.
+reserved 4-GPU node (`gpuA100x4` or `ghx4`) runs **4 jobs at once**. Measured in
+the Oct 2 dry run (Qwen2.5-7B, 48 requests, weights already in the shared cache):
+
+| | Delta (A100) | DeltaAI (GH200) |
+| --- | --- | --- |
+| Whole job (container start + model load + 48 requests) | ~2.5 min | ~1 min |
+| Of which: answering the 48 requests | 21–26 s | 9–11 s |
+| First job ever (also downloads the 15 GB of weights) | n/a: DeltaAI's job had already cached them | ~2 min |
 
 ```
 time for the whole room to finish one job ≈ participants × job_minutes / (nodes × 4)
 ```
 
-| Participants | Reserved nodes | GPUs | Room finishes one run in (at 4 min/job) |
-| --- | --- | --- | --- |
-| 20 | 1 | 4 | ~20 min |
-| 30 | 1 | 4 | ~30 min — tight |
-| 30 | 2 | 8 | ~15 min |
-| 40 | 3 | 12 | ~14 min |
+| Participants | Reserved nodes | GPUs | Room finishes one run in, Delta | DeltaAI |
+| --- | --- | --- | --- | --- |
+| 20 | 1 | 4 | ~13 min | ~5 min |
+| 30 | 1 | 4 | ~19 min, tight | ~8 min |
+| 30 | 2 | 8 | ~10 min | ~4 min |
+| 40 | 3 | 12 | ~9 min | ~4 min |
 
-Part 7 doubles the load. **Request enough nodes to finish one round in ≲15 minutes.**
+These assume jobs don't slow each other down. Thirty jobs reading the same
+shared cache at once may load more slowly than one did, so treat them as best
+cases. Part 7 doubles the load. **Request enough nodes to finish one round in ≲15 minutes.**
 If you can't, the fallback (`sample_results/`) still lets everyone complete Part 6.
 
 ## Before the session
