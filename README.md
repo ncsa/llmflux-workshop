@@ -517,3 +517,7 @@ llmflux logs JOB_ID -f                          # follow a job (Ctrl-C to stop w
 llmflux cancel JOB_ID                           # stop a job
 python show_results.py results/NAME.json [--csv results/NAME.csv]
 ```
+
+---
+
+This workshop material is released under the [MIT License](LICENSE).

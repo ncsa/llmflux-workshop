@@ -6,7 +6,7 @@ before, you can run the hands-on too. Everything else is in
 [`README.md`](README.md) (the full facilitator guide), [`../presenter/TALK.md`](../presenter/TALK.md)
 (what to say), and [`../README.md`](../README.md) (what participants follow).
 
-**Built by:** Josh Allen. ☐ *Add a way to reach him on the day.*
+**Built by:** Josh Allen. David Bianchi or the organizers can reach him on the day.
 
 ## What you need
 
