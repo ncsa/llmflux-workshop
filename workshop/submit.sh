@@ -21,6 +21,26 @@ if [[ -z "${WORKSHOP_ACCOUNT:-}" ]]; then
     exit 1
 fi
 
+# Refuse to continue on the wrong cluster: a job submitted from Delta with
+# DeltaAI's partition (or the reverse) fails with an error that's hard to
+# decode on your first day. Matches login and compute node names, so this also
+# works from an Open OnDemand Jupyter or VS Code session; unknown hosts pass.
+check_system() {
+    local host="${WORKSHOP_HOSTNAME:-$(hostname)}" wrong=""
+    case "$WORKSHOP_SYSTEM" in
+        delta)   [[ "$host" == gh-* || "$host" == gh[0-9]* || "$host" == dtai-* ]] && wrong=DeltaAI ;;
+        deltaai) [[ "$host" == dt-* || "$host" == gpu[a-z][0-9]* || "$host" == cn[0-9]* ]] && wrong=Delta ;;
+    esac
+    if [[ -n "$wrong" ]]; then
+        local right="Delta (login.delta.ncsa.illinois.edu)"
+        [[ "$WORKSHOP_SYSTEM" == deltaai ]] && right="DeltaAI (dtai-login.delta.ncsa.illinois.edu)"
+        echo "This workshop runs on $right, but you're logged in to $wrong ($host)." >&2
+        echo "Log out, log in to the right system, and run this again." >&2
+        exit 1
+    fi
+}
+check_system
+
 name="$(basename "$input" .jsonl)"
 # Anchor results to the workshop directory so they land in one place no matter
 # which directory you submit from.

@@ -1,4 +1,4 @@
-# Hands-on: running an LLM over your research data on Delta
+# Hands-on: running an LLM over your research data on NCSA Delta
 
 > **Keep this page open** in a browser tab next to your terminal. You'll copy
 > commands from it as you go.
@@ -13,7 +13,7 @@ every one of them, running on a GPU on NCSA's **Delta** supercomputer. Then you'
 change the task to something of your own and run it again.
 
 You don't need to have used a supercomputer before, and you don't need to install
-anything. Everything you need is already on Delta. Copy each command exactly as
+anything. Everything you need is already on the cluster. Copy each command exactly as
 shown; the text around it explains what it does and why, so you can do this again
 on your own later.
 
@@ -42,7 +42,7 @@ on your own later.
                                │                               ▼
                                │  results/all.json      ┌──────────────┐
                                └─────────────────────── │ COMPUTE NODE │
-                                  (shared filesystem)   │ 4× A100 GPUs │
+                                  (shared filesystem)   │   4 GPUs     │
                                                         │ runs the LLM │
                                                         └──────────────┘
 ```
@@ -63,12 +63,12 @@ compute node show up in your directory on the login node.
 | --- | --- |
 | **Node** | One computer in the cluster. Delta has hundreds. |
 | **Login node** | The computer you land on when you connect. Shared by everyone — don't run heavy work here. |
-| **Compute node** | A computer that runs jobs. Ours have 4 NVIDIA A100 GPUs each. |
+| **Compute node** | A computer that runs jobs. Ours have 4 NVIDIA GPUs each. |
 | **Slurm** | The job scheduler. You submit a job; Slurm queues it and runs it when the resources are free. |
 | **Job** | One unit of work submitted to Slurm, with a job ID number. |
-| **Partition** | A group of similar nodes, e.g. `gpuA100x4`. |
+| **Partition** | A group of similar nodes, e.g. `gpuA100x4` on Delta or `ghx4` on DeltaAI. |
 | **Account / allocation** | Who pays for the GPU time. Yours has been set up for this workshop. |
-| **Reservation** | Nodes set aside just for this workshop, so we don't wait behind everyone else on Delta. |
+| **Reservation** | Nodes set aside just for this workshop, so we don't wait behind everyone else on the cluster. |
 | **Module** | A way of loading preinstalled software: `module load llmflux`. |
 | **LLM** | Large language model — the kind of model behind ChatGPT. We'll use Qwen2.5-7B-Instruct, an open model. |
 | **Batch inference** | Sending many prompts to a model in one job, rather than chatting with it one message at a time. |
@@ -76,19 +76,31 @@ compute node show up in your directory on the login node.
 
 ---
 
-## Part 1 — Log in to Delta (≈5 min)
+## Part 1 — Log in (≈5 min)
 
-You'll need your Delta username, your password, and the **NCSA Duo** app on your
+NCSA runs two GPU clusters that work almost identically for this exercise:
+**Delta** (NVIDIA A100 GPUs) and **DeltaAI** (NVIDIA GH200 "Grace Hopper"
+GPUs). **Your facilitator will tell you which one we're using today.** Use that
+row of this table for everything below:
+
+| | Delta | DeltaAI |
+| --- | --- | --- |
+| SSH address | `login.delta.ncsa.illinois.edu` | `dtai-login.delta.ncsa.illinois.edu` |
+| Open OnDemand | <https://openondemand.delta.ncsa.illinois.edu/> | <https://gh-ondemand.delta.ncsa.illinois.edu/> |
+| Shell menu item | **>_Delta Shell Access** | **>_DeltaAI Shell Access** |
+| Login node names start with | `dt-login` | `gh-login` |
+
+You'll need your NCSA username, your password, and the **NCSA Duo** app on your
 phone. If you haven't set those up yet, tell a facilitator now; this is the one
 step that can't be fixed quickly during the session.
 
-**If you were in Monday's Track 1 session,** log in the same way you did there.
-Open OnDemand (option B) is the easiest.
+**If you've already logged in at this workshop** (for example in Monday's Track
+1 session), do it the same way. Open OnDemand (option B) is the easiest.
 
 **Option A — a terminal (Mac, Linux, or Windows PowerShell):**
 
 ```bash
-ssh YOUR_USERNAME@login.delta.ncsa.illinois.edu
+ssh YOUR_USERNAME@SSH_ADDRESS_FROM_THE_TABLE
 ```
 
 Type `yes` if it asks whether to trust the host (first time only). Enter your
@@ -98,9 +110,9 @@ anything as you type. That's normal.
 
 **Option B — your web browser (no terminal needed; easiest on Windows).**
 
-1. Go to <https://openondemand.delta.ncsa.illinois.edu/> and log in through
-   CILogon with your **NCSA** username, password, and Duo.
-2. In the **Clusters** menu, choose **>_Delta Shell Access**.
+1. Go to the Open OnDemand address from the table and log in through CILogon
+   with your **NCSA** username, password, and Duo.
+2. In the **Clusters** menu, choose the shell menu item from the table.
 3. A terminal opens in a new tab and asks for your NCSA password **again**. Type
    it (nothing will show), press Enter, then do the Duo step as in option A.
 
@@ -110,13 +122,14 @@ the top of the dashboard is a handy way to view and upload files later.
 Once you're in, check where you are:
 
 ```bash
-hostname      # which computer you're on, e.g. dt-login03.delta.ncsa.illinois.edu
+hostname      # which computer you're on, e.g. dt-login03... or gh-login02...
 whoami        # your username
 pwd           # your current directory: your home directory, /u/YOUR_USERNAME
 ```
 
 `hostname` should say `login`. That tells you you're on a login node, which is
-where you should be.
+where you should be. Check it starts with the right name from the table, too:
+the setup in Part 2 will stop you if you're on the wrong cluster.
 
 ---
 
@@ -165,13 +178,21 @@ head -3 data/abstracts.csv
 It's a normal CSV spreadsheet with an `id`, a `title`, and an `abstract` column.
 (These abstracts are made up for this workshop, but they look like real ones.)
 
+There are two sample datasets. Use the one your facilitator says, or whichever
+is closer to your own research:
+
+| Dataset | File | What's in it |
+| --- | --- | --- |
+| `general` (the default) | `data/abstracts.csv` | 16 abstracts across disciplines: climate, materials, neuroscience, agriculture, computing, ... |
+| `genomics` | `data/genomics_abstracts.csv` | 16 genomics abstracts: variant calling, single-cell, metagenomics, epigenomics, crop and livestock genomes, ... |
+
 We want the model to do three jobs for every abstract:
 
 | Task | What we ask | Why it's interesting |
 | --- | --- | --- |
 | `summarize` | Two plain-language sentences | Free-form text, so there's no single right answer |
-| `classify` | Pick one field from a fixed list | Does the model stay inside the list? |
-| `extract` | Return `method`, `data_size`, `key_result` as JSON | The output has to be machine-readable for the next step in a pipeline |
+| `classify` | Pick one category from a fixed list (research fields, or kinds of genomics study) | Does the model stay inside the list? |
+| `extract` | Return specific facts as JSON (e.g. `method`, `data_size`, `key_result`; for genomics, `organism`, `technology`, `sample_size`, `key_result`) | The output has to be machine-readable for the next step in a pipeline |
 
 `make_prompts.py` turns each row × each task into one request:
 
@@ -180,8 +201,14 @@ python make_prompts.py
 ```
 
 ```
-Wrote 48 requests (summarize, classify, extract) to .../prompts/all.jsonl
+Wrote 48 requests (summarize, classify, extract; general dataset) to .../prompts/all.jsonl
 ```
+
+For the genomics abstracts, add `--dataset genomics`. The file is then called
+`prompts/genomics-all.jsonl`; use that name in the commands below, and
+`results/genomics-all.json` for the results. (If your facilitator made genomics
+the default for this session, plain `python make_prompts.py` already uses it,
+and the output line says so.)
 
 That's 16 abstracts × 3 tasks = 48 requests, all in one file. Look at one request,
 pretty-printed:
@@ -234,7 +261,7 @@ Here's what each part of that command does:
 | `--model` | Which LLM to run. `llmflux show-models` lists all the options. |
 | `--input` / `--output` | Your requests, and where to write the answers |
 | `--account` | Which allocation pays for the GPU time |
-| `--partition` | Which group of nodes to use (`gpuA100x4`: nodes with 4 A100 GPUs) |
+| `--partition` | Which group of nodes to use (`gpuA100x4` on Delta: nodes with 4 A100 GPUs; `ghx4` on DeltaAI: 4 GH200s) |
 | `--time` | The longest the job may run. Slurm stops it after that. Ask for a bit more than you need. |
 | `--sbatch-arg reservation=…` | Use the nodes set aside for this workshop |
 
@@ -323,8 +350,8 @@ python show_results.py results/all.json --csv results/all.csv
 
 **Look closely.** These are the questions you'd ask in real research:
 
-1. **Classify:** did every answer come from the six allowed labels exactly, or did the model sometimes reword one or add a sentence? Do you agree with its choices?
-2. **Extract:** `show_results.py` checks that every reply is valid JSON and flags any that aren't. Did any fail? Are the extracted numbers really in the abstract, or did the model invent any (this is called hallucination)?
+1. **Classify:** `show_results.py` flags any answer that isn't exactly one of the six allowed labels (it forgives capitalization and a trailing period). Did the model ever reword a label or add a sentence? Do you agree with its choices?
+2. **Extract:** `show_results.py` flags any reply that isn't valid JSON or is missing a requested field. Did any fail? The script can't check the harder question: are the extracted numbers really in the abstract, or did the model invent any (this is called hallucination)? Check a few by hand.
 3. **Summarize:** are the summaries accurate? Would a high-school student follow them?
 
 What you're seeing is that **an LLM's output is data that needs checking, not a
@@ -373,7 +400,7 @@ that it makes sense, then run it. This is the same loop that AI agents run: an
 assistant writes the code, and you review it and send it to the cluster.
 
 **C. Use your own data.** Copy any CSV onto Delta, for example with
-`scp mydata.csv YOUR_USERNAME@login.delta.ncsa.illinois.edu:~/llmflux-workshop/data/`
+`scp mydata.csv YOUR_USERNAME@SSH_ADDRESS:~/llmflux-workshop/data/`
 from your laptop, or with the Open OnDemand file browser's upload button. The
 CSV needs an `id` column, and the `{placeholders}` in your template must match
 its column names:
@@ -442,22 +469,23 @@ llmflux cancel JOB_ID   # cancel anything you don't need any more
 ```
 
 The workshop reservation ends after the session, but your files stay in
-`~/llmflux-workshop`, and you can keep using LLMFlux on Delta with any
+`~/llmflux-workshop`, and you can keep using LLMFlux on Delta or DeltaAI with any
 allocation you have:
 
 ```bash
 module load llmflux && conda activate base
 llmflux run --model Qwen2.5-7B-Instruct --input prompts/all.jsonl \
-    --account YOUR_ACCOUNT --partition gpuA100x4 --time 00:30:00
+    --account YOUR_ACCOUNT --partition gpuA100x4 --time 00:30:00    # ghx4 on DeltaAI
 ```
 
-(`accounts` on Delta lists the allocations you can charge to.) Without the
+(`accounts` lists the allocations you can charge to.) Without the
 reservation, your job waits in the general queue, so expect anywhere from a few
 minutes to a few hours.
 
 - This guide and the scripts: you're reading it. Bookmark it, or clone it with `git clone`.
 - LLMFlux documentation: <https://github.com/Center-for-AI-Innovation/llmflux>
-- Delta documentation: <https://docs.ncsa.illinois.edu/systems/delta/>
+- Delta documentation: <https://docs.ncsa.illinois.edu/systems/delta/en/latest/>
+- DeltaAI documentation: <https://docs.ncsa.illinois.edu/systems/deltaai/en/latest/>
 
 ---
 
@@ -474,7 +502,8 @@ minutes to a few hours.
 | Job stays PENDING with `(Reservation)` or `(ReqNodeNotAvail)` | Tell a facilitator. The reservation might not be active. |
 | Job FAILED | Run `llmflux logs JOB_ID` and show a facilitator the last lines. |
 | `results/all.json does not exist yet` | The job hasn't finished. Check `llmflux jobs`. |
-| A reply says `reply was not valid JSON` | The model didn't follow the format. That's a real result, not a bug in your setup. Look at what it wrote instead. |
+| A reply is flagged `not valid JSON`, `JSON is missing …`, or `not one of the allowed labels` | The model didn't follow the instructions. That's a real result, not a bug in your setup. Look at what it wrote instead. |
+| `This workshop runs on DeltaAI, but you're logged in to Delta` (or the reverse) | Log out and log in to the other system, using the table in Part 1. |
 | Anything else | Copy the whole error message, and raise your hand. |
 
 ## Cheat sheet

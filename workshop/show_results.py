@@ -9,9 +9,11 @@ Usage:
 LLMFlux writes one JSON file per job: {"results": [...], "run_metrics": {...}}.
 Each result holds the original request ("input"), the model's reply
 ("output", in OpenAI chat-completion format) or an "error". This script pulls
-out the reply text, groups it by task, and - for the extract task - checks
-whether the model actually returned valid JSON. That last check is the point:
-an LLM's output is data you have to validate, not an answer you can trust.
+out the reply text, groups it by task, and checks the answers that have a
+right format: a classify answer must be one of the allowed labels, and an
+extract answer must be valid JSON with every requested field. Those checks are
+the point: an LLM's output is data you have to validate, not an answer you can
+trust.
 """
 
 import argparse
@@ -45,20 +47,37 @@ def parse_json_reply(text: str) -> dict | None:
     return value if isinstance(value, dict) else None
 
 
+def normalize_label(text: str) -> str:
+    """Forgive case, surrounding whitespace/quotes, and a trailing period."""
+    return text.strip().strip("\"'`*").rstrip(".").strip().casefold()
+
+
 def summarize(results: list[dict]) -> list[dict]:
     """Flatten raw results into rows of {task, id, reply, ok, error}."""
     rows = []
     for result in results:
-        custom_id = (result.get("input") or {}).get("custom_id", "?")
+        request = result.get("input") or {}
+        custom_id = request.get("custom_id", "?")
+        metadata = request.get("metadata") or {}
         task, _, item_id = custom_id.partition(":") if ":" in custom_id else ("-", "", custom_id)
         text = reply_text(result)
         row = {"task": task, "id": item_id, "reply": text, "ok": text is not None,
                "error": result.get("error")}
-        if task == "extract" and text is not None:
+        if text is not None and metadata.get("allowed_labels"):
+            allowed = {normalize_label(label) for label in metadata["allowed_labels"]}
+            if normalize_label(text) not in allowed:
+                row["ok"] = False
+                row["error"] = "answer is not one of the allowed labels"
+        if text is not None and task == "extract":
             row["parsed"] = parse_json_reply(text)
-            row["ok"] = row["parsed"] is not None
-            if not row["ok"]:
+            if row["parsed"] is None:
+                row["ok"] = False
                 row["error"] = "reply was not valid JSON"
+            else:
+                missing = [f for f in metadata.get("expected_fields", []) if f not in row["parsed"]]
+                if missing:
+                    row["ok"] = False
+                    row["error"] = f"JSON is missing {', '.join(missing)}"
         rows.append(row)
     return rows
 

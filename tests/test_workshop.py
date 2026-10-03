@@ -18,12 +18,14 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 from llmflux.converters import validate_jsonl
 from llmflux.io.base import OutputResult
 
 WORKSHOP = Path(__file__).resolve().parents[1] / "workshop"
 ABSTRACTS = WORKSHOP / "data" / "abstracts.csv"
+GENOMICS = WORKSHOP / "data" / "genomics_abstracts.csv"
 
 
 def _load(name):
@@ -50,15 +52,30 @@ def _chat_output(content):
 
 
 class TestSampleData(unittest.TestCase):
-    def test_every_row_has_unique_id_and_text(self):
-        with ABSTRACTS.open(newline="") as f:
-            rows = list(csv.DictReader(f))
-        self.assertGreater(len(rows), 0)
-        ids = [r["id"] for r in rows]
-        self.assertEqual(len(ids), len(set(ids)))
-        for row in rows:
-            self.assertTrue(row["title"].strip(), row["id"])
-            self.assertTrue(row["abstract"].strip(), row["id"])
+    def test_every_dataset_csv_has_unique_ids_and_text(self):
+        for name, spec in make_prompts.DATASETS.items():
+            with self.subTest(dataset=name), spec["csv"].open(newline="") as f:
+                rows = list(csv.DictReader(f))
+                self.assertGreater(len(rows), 0)
+                ids = [r["id"] for r in rows]
+                self.assertEqual(len(ids), len(set(ids)))
+                for row in rows:
+                    self.assertTrue(row["title"].strip(), row["id"])
+                    self.assertTrue(row["abstract"].strip(), row["id"])
+
+    def test_every_dataset_defines_labels_and_fields(self):
+        for name, spec in make_prompts.DATASETS.items():
+            with self.subTest(dataset=name):
+                self.assertGreaterEqual(len(spec["labels"]), 2)
+                self.assertEqual(len(spec["labels"]), len(set(spec["labels"])))
+                self.assertIn("key_result", spec["fields"])
+
+    def test_setup_copies_every_dataset(self):
+        # A dataset that setup_workshop.sh doesn't copy would work in the repo
+        # and fail on a participant's copy.
+        script = (WORKSHOP / "setup_workshop.sh").read_text()
+        for spec in make_prompts.DATASETS.values():
+            self.assertIn(f"data/{spec['csv'].name}", script)
 
 
 class TestBuildTask(unittest.TestCase):
@@ -96,12 +113,38 @@ class TestBuildTask(unittest.TestCase):
     def test_generation_settings_come_from_task(self):
         body = make_prompts.build_task("classify", ABSTRACTS, limit=1)[0]["body"]
         self.assertEqual(body["temperature"], 0.0)
-        self.assertEqual(body["max_tokens"], 10)
+        self.assertEqual(body["max_tokens"], 15)
 
     def test_limit_takes_first_rows(self):
         entries = make_prompts.build_task("classify", ABSTRACTS, limit=3)
         self.assertEqual([e["custom_id"] for e in entries],
                          ["classify:p01", "classify:p02", "classify:p03"])
+
+    def test_dataset_fills_labels_and_fields(self):
+        classify = make_prompts.build_task("classify", GENOMICS, limit=1, dataset="genomics")[0]
+        prompt = classify["body"]["messages"][1]["content"]
+        self.assertIn("Microbiome & metagenomics", prompt)
+        self.assertNotIn("Social Sciences", prompt)
+        self.assertNotIn("<LABELS>", prompt)
+
+        extract = make_prompts.build_task("extract", GENOMICS, limit=1, dataset="genomics")[0]
+        prompt = extract["body"]["messages"][1]["content"]
+        self.assertIn('{"organism": "<species studied, or null>", "technology":', prompt)
+        self.assertNotIn("<FIELDS>", prompt)
+        self.assertNotIn('"method"', prompt)
+
+    def test_requests_record_what_a_valid_answer_is(self):
+        classify = make_prompts.build_task("classify", GENOMICS, limit=1, dataset="genomics")[0]
+        self.assertEqual(classify["metadata"]["allowed_labels"], make_prompts.DATASETS["genomics"]["labels"])
+        self.assertEqual(classify["metadata"]["dataset"], "genomics")
+        extract = make_prompts.build_task("extract", ABSTRACTS, limit=1)[0]
+        self.assertEqual(extract["metadata"]["expected_fields"], ["method", "data_size", "key_result"])
+        summary = make_prompts.build_task("summarize", ABSTRACTS, limit=1)[0]
+        self.assertNotIn("allowed_labels", summary["metadata"])
+        self.assertNotIn("expected_fields", summary["metadata"])
+
+    def test_custom_task_without_markers_is_untouched(self):
+        self.assertEqual(make_prompts.render_template("Q: {title}", "genomics"), "Q: {title}")
 
     def test_unreadable_csv_raises(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -148,7 +191,7 @@ class TestMakePromptsMain(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn(" - INFO - ", result.stdout + result.stderr)
-        self.assertEqual(result.stdout.strip(), f"Wrote 3 requests (summarize, classify, extract) to {output}")
+        self.assertEqual(result.stdout.strip(), f"Wrote 3 requests (summarize, classify, extract; general dataset) to {output}")
 
     def test_single_task(self):
         output = self.tmp / "x.jsonl"
@@ -156,6 +199,29 @@ class TestMakePromptsMain(unittest.TestCase):
         self.assertEqual(code, 0)
         ids = [json.loads(line)["custom_id"] for line in output.read_text().splitlines()]
         self.assertEqual(ids, ["extract:p01", "extract:p02"])
+
+    def test_genomics_dataset_gets_its_own_file(self):
+        with patch.object(make_prompts, "HERE", self.tmp):
+            code, out, _ = self.run_main("--dataset", "genomics", "--task", "classify", "--limit", "2")
+        self.assertEqual(code, 0)
+        output = self.tmp / "prompts" / "genomics-classify.jsonl"
+        ids = [json.loads(line)["custom_id"] for line in output.read_text().splitlines()]
+        self.assertEqual(ids, ["classify:g01", "classify:g02"])
+        self.assertIn("genomics dataset", out)
+
+    def test_dataset_default_comes_from_workshop_settings(self):
+        output = self.tmp / "x.jsonl"
+        with patch.dict(os.environ, {"WORKSHOP_DATASET": "genomics"}):
+            code, _, _ = self.run_main("--task", "classify", "--limit", "1", "--output", str(output))
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(output.read_text())["custom_id"], "classify:g01")
+
+    def test_unknown_dataset_in_settings_is_rejected(self):
+        with patch.dict(os.environ, {"WORKSHOP_DATASET": "chemistry"}), \
+                redirect_stderr(io.StringIO()) as err, self.assertRaises(SystemExit) as ctx:
+            make_prompts.main(["--limit", "1"])
+        self.assertEqual(ctx.exception.code, 2)
+        self.assertIn("chemistry", err.getvalue())
 
     def test_missing_input_fails_cleanly(self):
         code, _, err = self.run_main("--input", str(self.tmp / "nope.csv"),
@@ -205,6 +271,36 @@ class TestParsing(unittest.TestCase):
         self.assertEqual(rows[2]["error"], "reply was not valid JSON")
         self.assertEqual(rows[3]["error"], "timeout")
 
+    def test_classify_answers_are_checked_against_allowed_labels(self):
+        def result(answer):
+            return {"input": {"custom_id": "classify:p01",
+                              "metadata": {"allowed_labels": ["Life Sciences", "Computing & AI"]}},
+                    "output": _chat_output(answer)}
+        rows = show_results.summarize([result(a) for a in [
+            "Life Sciences", "  life sciences.\n", '"Computing & AI"',
+            "Biology", "Life Sciences, because it studies cells",
+        ]])
+        self.assertEqual([r["ok"] for r in rows], [True, True, True, False, False])
+        self.assertEqual(rows[3]["error"], "answer is not one of the allowed labels")
+
+    def test_extract_answers_must_have_every_field(self):
+        meta = {"expected_fields": ["organism", "key_result"]}
+        rows = show_results.summarize([
+            {"input": {"custom_id": "extract:g01", "metadata": meta},
+             "output": _chat_output('{"organism": "soybean", "key_result": "17 clusters"}')},
+            {"input": {"custom_id": "extract:g02", "metadata": meta},
+             "output": _chat_output('{"organism": "cattle"}')},
+        ])
+        self.assertEqual([r["ok"] for r in rows], [True, False])
+        self.assertEqual(rows[1]["error"], "JSON is missing key_result")
+
+    def test_results_without_metadata_skip_the_checks(self):
+        rows = show_results.summarize([
+            {"input": {"custom_id": "classify:p01"}, "output": _chat_output("Anything at all")},
+            {"input": {"custom_id": "extract:p01"}, "output": _chat_output('{"x": 1}')},
+        ])
+        self.assertEqual([r["ok"] for r in rows], [True, True])
+
 
 class TestShowResultsMain(unittest.TestCase):
     def setUp(self):
@@ -225,26 +321,33 @@ class TestShowResultsMain(unittest.TestCase):
     def test_round_trip_from_real_prompts_and_result_format(self):
         # Prompts from make_prompts, results in the exact shape BatchProcessor
         # saves (OutputResult.to_dict), read back by show_results.
-        entries = make_prompts.build_task("extract", ABSTRACTS, limit=2)
+        # The expected fields travel inside the request's metadata, so this
+        # also checks they survive into the saved results.
+        entries = make_prompts.build_task("extract", ABSTRACTS, limit=3)
+        complete = '{"method": "CNN", "data_size": "38 years", "key_result": "71% retreating"}'
         results = [
-            OutputResult(input=entries[0], output=_chat_output('{"method": "CNN"}'),
+            OutputResult(input=entries[0], output=_chat_output(complete),
                          metadata={"model": "m"}).to_dict(),
             OutputResult(input=entries[1], output=None, error="CUDA OOM",
                          metadata={"error": True}).to_dict(),
+            OutputResult(input=entries[2], output=_chat_output('{"method": "GNN"}'),
+                         metadata={"model": "m"}).to_dict(),
         ]
-        path = self.write_results(results, run_metrics={"total_requests": 2, "latency": {"p50": 1}})
+        path = self.write_results(results, run_metrics={"total_requests": 3, "latency": {"p50": 1}})
         csv_path = self.tmp / "out" / "replies.csv"
         code, out, _ = self.run_main(path, "--csv", csv_path)
         self.assertEqual(code, 0)
         self.assertIn("=== extract ===", out)
-        self.assertIn('p01  {"method": "CNN"}', out)
+        self.assertIn('p01  {"method": "CNN", "data_size"', out)
         self.assertIn("p02  FAILED: CUDA OOM", out)
-        self.assertIn("1/2 replies usable (1 need attention)", out)
-        self.assertIn("total_requests=2", out)
+        self.assertIn('p03  [JSON is missing data_size, key_result] {"method": "GNN"}', out)
+        self.assertIn("1/3 replies usable (2 need attention)", out)
+        self.assertIn("total_requests=3", out)
         self.assertNotIn("latency", out)
         with csv_path.open(newline="") as f:
             rows = list(csv.DictReader(f))
-        self.assertEqual([(r["id"], r["ok"]) for r in rows], [("p01", "True"), ("p02", "False")])
+        self.assertEqual([(r["id"], r["ok"]) for r in rows],
+                         [("p01", "True"), ("p02", "False"), ("p03", "False")])
 
     def test_long_replies_are_truncated(self):
         path = self.write_results([{"input": {"custom_id": "summarize:p01"},
@@ -273,10 +376,12 @@ class TestShowResultsMain(unittest.TestCase):
 
 
 FILLED_CONF = """\
+WORKSHOP_SYSTEM="delta"
 WORKSHOP_ACCOUNT="abcd-delta-gpu"
 WORKSHOP_RESERVATION="conf res"
 WORKSHOP_PARTITION="gpuA100x4"
 WORKSHOP_MODEL="Qwen2.5-7B-Instruct"
+WORKSHOP_DATASET="general"
 WORKSHOP_TIME="00:20:00"
 WORKSHOP_HF_HOME="{hf_home}"
 WORKSHOP_CONTAINERS_DIR="{containers}"
@@ -293,7 +398,9 @@ class ShellTestCase(unittest.TestCase):
         self.home.mkdir()
 
     def env(self, **extra):
-        env = {"PATH": os.environ["PATH"], "HOME": str(self.home)}
+        # A Delta login node unless a test says otherwise; the real hostname of
+        # whatever machine runs the tests must not matter.
+        env = {"PATH": os.environ["PATH"], "HOME": str(self.home), "WORKSHOP_HOSTNAME": "dt-login03"}
         env.update(extra)
         return env
 
@@ -302,11 +409,19 @@ class ShellTestCase(unittest.TestCase):
         conf.write_text(text)
         return conf
 
-    def setup_workshop(self, conf, *args):
+    def setup_workshop(self, conf, *args, **env):
         return subprocess.run(
             ["bash", str(WORKSHOP / "setup_workshop.sh"), *args],
-            env=self.env(WORKSHOP_CONF=str(conf)), capture_output=True, text=True,
+            env=self.env(WORKSHOP_CONF=str(conf), **env), capture_output=True, text=True,
         )
+
+    def filled(self, **changes):
+        """FILLED_CONF with no optional paths, and KEY=value overrides."""
+        text = FILLED_CONF.format(hf_home="", samples="", containers="")
+        lines = [line for line in text.splitlines()
+                 if line.split("=", 1)[0] not in changes]
+        lines += [f'{key}="{value}"' for key, value in changes.items()]
+        return self.write_conf("\n".join(lines) + "\n")
 
     def source_env(self, dest, command):
         return subprocess.run(
@@ -340,8 +455,8 @@ class TestSetupWorkshop(ShellTestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stderr, "")
         dest = self.home / "llmflux-workshop"
-        for f in ["make_prompts.py", "show_results.py", "submit.sh",
-                  "data/abstracts.csv", "sample_results/all.json"]:
+        for f in ["make_prompts.py", "show_results.py", "submit.sh", "data/abstracts.csv",
+                  "data/genomics_abstracts.csv", "sample_results/all.json"]:
             self.assertTrue((dest / f).is_file(), f)
         self.assertTrue((dest / "prompts").is_dir())
         self.assertTrue((dest / "results").is_dir())
@@ -416,6 +531,65 @@ class TestSetupWorkshop(ShellTestCase):
         self.assertIn("new-res", (dest / "workshop.env").read_text())
 
 
+class TestSystemChecks(ShellTestCase):
+    def test_deltaai_conf_on_deltaai_login(self):
+        conf = self.filled(WORKSHOP_SYSTEM="deltaai", WORKSHOP_PARTITION="ghx4",
+                           WORKSHOP_ACCOUNT="abcd-dtai-gh", WORKSHOP_DATASET="genomics")
+        result = self.setup_workshop(conf, WORKSHOP_HOSTNAME="gh-login02")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        env_text = (self.home / "llmflux-workshop" / "workshop.env").read_text()
+        self.assertIn("export WORKSHOP_SYSTEM=deltaai", env_text)
+        self.assertIn("export WORKSHOP_DATASET=genomics", env_text)
+
+    def test_logged_in_to_the_wrong_system(self):
+        cases = [
+            ("delta", "gpuA100x4", "abcd-delta-gpu", "gh-login02", "DeltaAI"),
+            ("delta", "gpuA100x4", "abcd-delta-gpu", "gh012", "DeltaAI"),
+            ("deltaai", "ghx4", "abcd-dtai-gh", "dt-login03.delta.ncsa.illinois.edu", "dtai-login"),
+            ("deltaai", "ghx4", "abcd-dtai-gh", "gpua052", "dtai-login"),
+        ]
+        for system, partition, account, host, hint in cases:
+            with self.subTest(system=system, host=host):
+                conf = self.filled(WORKSHOP_SYSTEM=system, WORKSHOP_PARTITION=partition,
+                                   WORKSHOP_ACCOUNT=account)
+                result = self.setup_workshop(conf, WORKSHOP_HOSTNAME=host)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("but you're logged in to", result.stderr)
+                self.assertIn(hint, result.stderr)
+                self.assertFalse((self.home / "llmflux-workshop").exists())
+
+    def test_unrecognized_host_is_allowed(self):
+        # e.g. a laptop during a facilitator's local check, or a node naming
+        # scheme we don't know about: don't block on a guess.
+        result = self.setup_workshop(self.filled(), WORKSHOP_HOSTNAME="my-laptop")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_partition_must_match_system(self):
+        for system, partition, account in [("delta", "ghx4", "abcd-delta-gpu"),
+                                           ("deltaai", "gpuA100x4", "abcd-dtai-gh")]:
+            with self.subTest(system=system):
+                conf = self.filled(WORKSHOP_SYSTEM=system, WORKSHOP_PARTITION=partition,
+                                   WORKSHOP_ACCOUNT=account)
+                result = self.setup_workshop(conf, WORKSHOP_HOSTNAME="my-laptop")
+                self.assertEqual(result.returncode, 1)
+                self.assertIn(f"WORKSHOP_PARTITION={partition}", result.stderr)
+
+    def test_account_from_the_other_system_only_warns(self):
+        conf = self.filled(WORKSHOP_ACCOUNT="abcd-dtai-gh")
+        result = self.setup_workshop(conf)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("doesn't look like a Delta account", result.stderr)
+
+    def test_invalid_system_and_dataset(self):
+        result = self.setup_workshop(self.filled(WORKSHOP_SYSTEM="delta-ai"))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('must be "delta" or "deltaai"', result.stderr)
+        result = self.setup_workshop(self.filled(WORKSHOP_DATASET="chemistry"))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("WORKSHOP_DATASET must be", result.stderr)
+
+
 class TestSubmit(ShellTestCase):
     def setUp(self):
         super().setUp()
@@ -432,6 +606,7 @@ class TestSubmit(ShellTestCase):
 
     def submit(self, *args, **env):
         base = {"PATH": f"{self.bin}:{os.environ['PATH']}", "FAKE_ARGS": str(self.args_file),
+                "WORKSHOP_SYSTEM": "delta", "WORKSHOP_HOSTNAME": "dt-login03",
                 "WORKSHOP_ACCOUNT": "abcd-delta-gpu", "WORKSHOP_RESERVATION": "confres",
                 "WORKSHOP_PARTITION": "gpuA100x4", "WORKSHOP_MODEL": "Qwen2.5-7B-Instruct",
                 "WORKSHOP_TIME": "00:20:00", "LLMFLUX_WORKSPACE": str(self.workspace)}
@@ -470,6 +645,12 @@ class TestSubmit(ShellTestCase):
         result = self.submit("prompts/nope.jsonl")
         self.assertEqual(result.returncode, 1)
         self.assertIn("make_prompts.py", result.stderr)
+
+    def test_wrong_system_is_caught_before_submitting(self):
+        result = self.submit("prompts/all.jsonl", WORKSHOP_HOSTNAME="gh-login01")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("logged in to DeltaAI", result.stderr)
+        self.assertFalse(self.args_file.exists())
 
     def test_usage(self):
         self.assertEqual(self.submit().returncode, 2)

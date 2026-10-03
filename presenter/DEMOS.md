@@ -116,7 +116,8 @@ set up your own workspace in advance with `setup_workshop.sh`, as participants d
 
 ```bash
 source ~/llmflux-workshop/workshop.env
-python make_prompts.py
+python make_prompts.py                    # add --dataset genomics for a bio audience,
+                                          # and use the genomics-all file names below
 bash submit.sh prompts/all.jsonl          # note the job ID
 ```
 

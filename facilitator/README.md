@@ -10,6 +10,7 @@ for the day, prep, queue capacity, and fallbacks.
 | [`../README.md`](../README.md) | Participants: the hands-on guide, step by step |
 | [`../presenter/TALK.md`](../presenter/TALK.md) | The presenter: the ~15-minute talk and optional extras |
 | [`../presenter/DEMOS.md`](../presenter/DEMOS.md) | The presenter: scripts for the Illinois Chat, LLMHub, and LLMFlux demos |
+| [`LEAD_THIS_SESSION.md`](LEAD_THIS_SESSION.md) | **Anyone leading this on short notice**: a pre-flight check, a 10–20 minute demo format, and fallbacks |
 | `README.md` (this file) | Facilitators: plan, prep, capacity, fallbacks |
 | `workshop/workshop.conf` | Facilitators fill this in **once**, in the shared copy on Delta. It's the only file with site-specific values. |
 | `workshop/setup_workshop.sh` | Participants run this once. It copies the scripts and data and writes `workshop.env`. |
@@ -17,6 +18,7 @@ for the day, prep, queue capacity, and fallbacks.
 | `workshop/submit.sh` | Wraps `llmflux run` with the workshop settings and prints the full command |
 | `workshop/show_results.py` | Prints results grouped by task, validates the JSON extraction, writes a CSV |
 | `workshop/data/abstracts.csv` | 16 synthetic abstracts across disciplines, written for this workshop |
+| `workshop/data/genomics_abstracts.csv` | 16 synthetic genomics abstracts, for bio-focused sessions (`--dataset genomics`, or `WORKSHOP_DATASET`) |
 
 ## Session plan (Tue 10:00–11:45)
 
@@ -40,10 +42,31 @@ If you're far behind, have participants run `show_results.py` on
 `sample_results/` and skip submitting their own job. If you're ahead, add the
 "Live change" or "`llmflux serve`" extras from `TALK.md`.
 
+## Delta or DeltaAI?
+
+As of Oct 2 it's **not known which system the reservation is on**, and the event
+is sponsored by both. The materials work on either. Set `WORKSHOP_SYSTEM`,
+`WORKSHOP_PARTITION`, and `WORKSHOP_ACCOUNT` in `workshop.conf` (the table at the
+top of that file lists each system's values). Setup and submit then refuse to run
+from the wrong cluster or with a partition that doesn't match.
+
+| | Delta | DeltaAI |
+| --- | --- | --- |
+| GPUs per node | 4× A100 (x86) | 4× GH200 (ARM) |
+| Partition | `gpuA100x4` | `ghx4` |
+| llmflux install | `module load llmflux`, in Delta's docs | `module load llmflux`, in DeltaAI's docs. **Installed by Josh and not yet tested end to end, so dry-run it first.** |
+| Container image | x86 `.sif` | ARM `.sif`. **An image built on one system won't run on the other.** |
+| Model weights (`HF_HOME`) | One shared cache works for both systems: `/projects` is mounted on both | |
+
+**Until you know which system it is, dry-run both.** If DeltaAI fails and can't
+be fixed in time, ask NCSA whether the reservation can move to Delta. Failing
+that, the demo can run on Delta from the presenter's own allocation while the
+hands-on uses `sample_results/`.
+
 ## Capacity: will the queue keep up?
 
-Each participant job requests **one A100**. Slurm on Delta allocates whole GPUs,
-so a reserved `gpuA100x4` node runs **4 jobs at once**. One job =
+Each participant job requests **one GPU**. Slurm allocates whole GPUs, so a
+reserved 4-GPU node (`gpuA100x4` or `ghx4`) runs **4 jobs at once**. One job =
 queue wait + container start + model load + 48 requests. Measure the last three
 in your dry run (`sacct -j <id> --format=Elapsed`). A ~4-minute job is a
 reasonable guess to plan with before you have a real number.
@@ -66,16 +89,18 @@ If you can't, the fallback (`sample_results/`) still lets everyone complete Part
 
 ### As soon as possible
 
-- [ ] **Participant accounts.** Confirm every participant has a Delta login, has set
+- [ ] **Participant accounts.** Confirm every participant has a login on the right system, has set
       their password, and has enrolled in NCSA Duo, *before the day*. Send the
       Part 1 instructions out in advance and ask everyone to log in once. This is
       the most likely thing to eat the first 20 minutes.
-- [ ] **Reservation.** NCSA ticket for N `gpuA100x4` nodes (see Capacity),
-      covering 09:30–12:00 (the extra time before is for your own checks), on the
-      participants' account. Ask NCSA to confirm the participants' account is
-      allowed to use it.
-- [ ] **Account name.** Run `accounts` on Delta as a participant-equivalent user.
-      The GPU account ends in `-delta-gpu`.
+- [ ] **Reservation.** Find out what was requested: which system, how many
+      nodes, which partition, and which day and time. It needs to cover Tuesday
+      09:30–12:00 (the extra time before is for your own checks), and Monday
+      12:45–2:30 too if the genomics-session fill might be hands-on rather than a
+      demo. Ask NCSA to confirm the participants' account is allowed to use it
+      (`scontrol show res <name>` lists the accounts).
+- [ ] **Account name.** Run `accounts` as a participant-equivalent user.
+      GPU accounts end in `-delta-gpu` on Delta and `-dtai-gh` on DeltaAI.
 - [ ] **Shared folder.** Clone this repo somewhere every participant can read:
       ```bash
       git clone <this repo's URL> /projects/<project>/llmflux-workshop
@@ -96,6 +121,8 @@ dry run as early as possible, so there's still time to fix what it finds.
 
 Do all of this as a test participant account if you can get one, and without the
 reservation (`WORKSHOP_RESERVATION=""`) if it isn't active yet.
+
+Do steps 1, 4, and 5 on **each system** that might host the reservation.
 
 1. **Check the module.**
    ```bash
@@ -123,10 +150,12 @@ reservation (`WORKSHOP_RESERVATION=""`) if it isn't active yet.
 4. **Run the participant guide end to end** exactly as a participant would, Parts 2–6.
    Note the job's elapsed time for the Capacity math, and check how long it sits
    in each state.
-5. **Keep the results as the sample:**
+5. **Keep the results as the sample**, for both datasets:
    ```bash
+   python make_prompts.py --dataset genomics && bash submit.sh prompts/genomics-all.jsonl
+   # ...once both jobs finish:
    mkdir -p /projects/<project>/llmflux-workshop/sample_results
-   cp ~/llmflux-workshop/results/all.json /projects/<project>/llmflux-workshop/sample_results/
+   cp ~/llmflux-workshop/results/{all,genomics-all}.json /projects/<project>/llmflux-workshop/sample_results/
    ```
    Set `WORKSHOP_SAMPLE_RESULTS` to that directory. Participants who've already
    run setup get it by re-running `setup_workshop.sh`.

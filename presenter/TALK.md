@@ -100,6 +100,26 @@ beyond chat.
     and open this page next to it. Everything I just did, you're about to do."*
     → hands-on.
 
+## For a genomics audience
+
+Same talk, with the genomics data: `python make_prompts.py --dataset genomics`,
+then `bash submit.sh prompts/genomics-all.jsonl` and
+`python show_results.py results/genomics-all.json`. Adjust these slides:
+
+- **1 (hook):** *"Who has a stack of papers, sample sheets, or annotation notes they'd like to mine?"*
+- **2 (the gap):** add a point about genomic and clinical data: it often *can't*
+  go to a commercial API, so running open models on campus hardware matters more here.
+- **5 (the pattern):** genomics examples: triaging literature for a review,
+  pulling organism, assay, and sample size out of methods sections, cleaning up
+  inconsistent free-text sample metadata.
+- **Be clear about scope:** these models read *text about* genomics. Sequence
+  data itself is the job of domain models, like the deep-learning variant
+  callers in the genomics session. A good line: *"An LLM can read 10,000 methods
+  sections. It shouldn't be calling your variants."*
+
+For a 10–20 minute version, use the "Format A" plan in
+[`facilitator/LEAD_THIS_SESSION.md`](../facilitator/LEAD_THIS_SESSION.md).
+
 ## Optional extras, if there's time
 
 | Block | Adds | What happens |
