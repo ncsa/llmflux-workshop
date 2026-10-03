@@ -9,7 +9,7 @@ about 1.5 minutes. The talk contains one small live demo, started at the
 beginning and shown near the end. The full session plan, with the hands-on, is in
 [`facilitator/README.md`](../facilitator/README.md).
 
-Fill the `[from dry run]` placeholders with numbers measured on Delta, not
+Fill the `[from dry run]` placeholders with numbers measured on the cluster, not
 estimates. A specific measured number is more credible than a round guess.
 
 ## Who's in the room
