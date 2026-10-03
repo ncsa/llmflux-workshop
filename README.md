@@ -23,7 +23,7 @@ on your own later.
 - What a batch job is, and why you send work to a queue instead of running it directly
 - How to turn a spreadsheet of data into a set of LLM requests
 - How to run those requests on a GPU with **LLMFlux**, and read the results
-- A sense of where this fits next to chat assistants and AI agents
+- Where batch jobs fit next to chat assistants, model services, and AI agents
 
 > **Stuck?** Raise your hand, or check [Troubleshooting](#troubleshooting) at the
 > bottom. Nothing in this exercise can damage your account or anyone else's work.
@@ -81,6 +81,9 @@ compute node show up in your directory on the login node.
 You'll need your Delta username, your password, and the **NCSA Duo** app on your
 phone. If you haven't set those up yet, tell a facilitator now; this is the one
 step that can't be fixed quickly during the session.
+
+**If you were in Monday's Track 1 session,** log in the same way you did there.
+Open OnDemand (option B) is the easiest.
 
 **Option A — a terminal (Mac, Linux, or Windows PowerShell):**
 
@@ -390,15 +393,23 @@ different model, change the `--model` value in the `llmflux run` command that
 
 ---
 
-## Part 8 — How this connects to AI agents
+## Part 8 — Deployment strategies: where batch fits
 
-An **AI agent** is an LLM running in a loop with tools: it decides on an action
-(run this code, search for that, read that file), sees the result, and decides
-what to do next. Coding agents that write and run scripts for you work this way.
+There are three common ways to use an LLM on campus, and research work often
+uses more than one:
 
-Agents and batch jobs solve different problems, and research work often needs both:
+- **A hosted assistant** (Illinois Chat): chat with a model grounded in your documents.
+- **A model service** (LLMHub, or `llmflux serve`): a model running on cluster GPUs that you can chat with, or call from your own code through an OpenAI-compatible API.
+- **Batch jobs** (LLMFlux, what you just did): run the same prompt over a whole dataset, then give the GPU back.
 
-| | Chat / agent | Batch (what you just did) |
+A model service is also what **AI agents** run on. An agent is an LLM in a loop
+with tools: it decides on an action (run this code, search for that, read that
+file), sees the result, and decides what to do next. Coding agents that write and
+run scripts for you work this way.
+
+Interactive use and batch solve different problems:
+
+| | Chat, agent, or model service | Batch (what you just did) |
 | --- | --- | --- |
 | Shape of the work | One open-ended task, many steps that depend on each other | The same well-defined step, thousands of times |
 | Who's in the loop | You, steering as it goes | You, checking the results afterwards |
@@ -409,11 +420,17 @@ A common pattern is to use an agent or assistant to **design and debug** the ste
 on a handful of examples (what you did in Part 7B), then hand it to a batch job to
 **run at scale**.
 
-LLMFlux can also do the other half. `llmflux serve` starts a model as a
+LLMFlux can also run a model service. `llmflux serve` starts a model as a
 long-running service on a compute node and gives you an address and an API key.
 Any tool that speaks the OpenAI API, including many agent frameworks and coding
 agents, can then use a model running on *your* allocation instead of a commercial
-API. That's a topic for another session; see the LLMFlux docs.
+API. See the LLMFlux docs.
+
+**What about fine-tuning?** LLMFlux runs models; it doesn't train them. Before
+fine-tuning, try better prompts (with a few worked examples), grounding in your
+documents, or a more specialized model. If you do fine-tune, LLMFlux can run your
+fine-tuned model in batch through a custom model config (see "Custom Model
+Configuration" in the LLMFlux docs).
 
 ---
 

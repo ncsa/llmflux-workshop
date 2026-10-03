@@ -1,14 +1,14 @@
 # Facilitator guide
 
-How to run the hands-on part of **"Getting Started Using AI Agents for
-Research/HPC"**: participants with no HPC experience run batch LLM inference with
-LLMFlux on NCSA Delta. It covers the plan for the day, prep, queue capacity, and
-fallbacks.
+How to run the **"LLM Flux"** session at the NCSA Regional Workshop on AI
+(Tuesday Oct 6, 10:00–11:45, Track 1, Room 1030). Participants new to HPC and ML
+run batch LLM inference with LLMFlux on NCSA Delta. This guide covers the plan
+for the day, prep, queue capacity, and fallbacks.
 
 | Path | Who it's for |
 | --- | --- |
 | [`../README.md`](../README.md) | Participants: the hands-on guide, step by step |
-| [`../presenter/TALK.md`](../presenter/TALK.md) | The presenter: the ~15-minute talk and the add-on blocks for extra time |
+| [`../presenter/TALK.md`](../presenter/TALK.md) | The presenter: the ~15-minute talk and optional extras |
 | [`../presenter/DEMOS.md`](../presenter/DEMOS.md) | The presenter: scripts for the Illinois Chat, LLMHub, and LLMFlux demos |
 | `README.md` (this file) | Facilitators: plan, prep, capacity, fallbacks |
 | `workshop/workshop.conf` | Facilitators fill this in **once**, in the shared copy on Delta. It's the only file with site-specific values. |
@@ -18,37 +18,27 @@ fallbacks.
 | `workshop/show_results.py` | Prints results grouped by task, validates the JSON extraction, writes a CSV |
 | `workshop/data/abstracts.csv` | 16 synthetic abstracts across disciplines, written for this workshop |
 
-## The plan: a short talk, then add-on blocks as time allows
+## Session plan (Tue 10:00–11:45)
 
-The presenter has about 15 minutes of talk, in a 10:00–11:45 session that is
-loosely organized. So the plan is a talk with a small live demo built in, plus
-add-on blocks that stand on their own and can be used or skipped on the day.
-[`presenter/TALK.md`](../presenter/TALK.md) has the details.
+The participants are Track 1 attendees: beginner-to-intermediate researchers
+from many disciplines. On Monday morning Track 1 covered logging in to Delta,
+Open OnDemand, VS Code, and Jupyter, so most have logged in once. Some will have
+come only for this session.
 
-| Block | Adds | Needs the room to… | Needs from you |
+| Time | Min | Segment | Notes |
 | --- | --- | --- | --- |
-| **Talk** with a job submitted at the start and its results shown near the end | ~15 min | nothing | Presenter's own Delta login works; `sample_results/` as a fallback |
-| **1. Live change**: an assistant writes a new task, resubmit | +5 min | nothing | Same |
-| **2. Hosted assistants**: Illinois Chat, LLMHub | +10–15 min | nothing (optionally open the shared chatbot link) | Demos prepared per `DEMOS.md` |
-| **3. Hands-on**: this guide, Parts 1–7 | +45 min | log in to Delta | **Everything below**: accounts tested, reservation, shared folder, dry run |
+| 10:00 | 2 | **Log in first.** *"Open Open OnDemand like yesterday and get a Delta shell open."* Facilitators help anyone stuck. | Login problems found now get fixed during the talk instead of holding up the hands-on. The presenter submits the demo job now. |
+| 10:02 | 15 | **Talk** ([`presenter/TALK.md`](../presenter/TALK.md)), ending with the demo job's results | |
+| 10:17 | 13 | **Demos:** Illinois Chat, LLMHub ([`presenter/DEMOS.md`](../presenter/DEMOS.md) §1–2) | **This is the buffer.** Shorten it or cut it if the room is behind. |
+| 10:30 | 50 | **Hands-on:** participant guide, Parts 2–7 | Target: **everyone has submitted by 10:50.** Watch `squeue -R <reservation>`. While jobs are queued, participants read `sample_results/`. |
+| 11:20 | 15 | **Debrief.** Put two participants' results on screen. Did classify stay in the label set? Did any JSON fail? Then Part 8 (deployment strategies) and Q&A. | |
+| 11:35 | 10 | Wrap-up: links, Part 9 (cancel jobs), slack for overruns | |
 
-Block 3 is the only one that depends on the participants and the cluster at the
-same time, so it's the one this guide is mostly about. **Decide by the morning of
-whether block 3 is possible** (participant logins confirmed, reservation active,
-dry run passed). If it's not, block 3 becomes "here's the link, try it later
-with your own allocation", and that still works, since the guide stands on its own.
-
-If block 3 runs, a 45-minute timeline:
-
-| Min | Segment | Notes |
-| --- | --- | --- |
-| 0–10 | Parts 1–2: log in, set up | Facilitators circulate; logins are where people get stuck |
-| 10–20 | Parts 3–4: build prompts, submit | Target: **everyone has submitted by minute 20.** Watch `squeue -R <reservation>`. |
-| 20–35 | Parts 5–7 | While queued, people read `sample_results/`. Part 7B ties back to the Illinois Chat demo. |
-| 35–45 | Debrief | Put two participants' results on screen. Did classify stay in the label set? Did any JSON fail? Then Part 8 (batch vs. agent) and Part 9 (cancel jobs). |
-
-If you're behind, cut Part 7 down to option B. If you're far behind, have
-participants run `show_results.py` on `sample_results/` and skip submitting their own job.
+If you're behind, cut the demos first, then shorten Part 7 to option B (an
+assistant writes a task), which is the step that ties the demos to the hands-on.
+If you're far behind, have participants run `show_results.py` on
+`sample_results/` and skip submitting their own job. If you're ahead, add the
+"Live change" or "`llmflux serve`" extras from `TALK.md`.
 
 ## Capacity: will the queue keep up?
 
@@ -99,7 +89,10 @@ If you can't, the fallback (`sample_results/`) still lets everyone complete Part
       be readable by the account that needed it, so check this as a real
       participant, not as yourself.
 
-### ~1 week before: dry run
+### This weekend / Monday: dry run
+
+The event was confirmed on Friday Oct 2, so there's no week of slack. Do the
+dry run as early as possible, so there's still time to fix what it finds.
 
 Do all of this as a test participant account if you can get one, and without the
 reservation (`WORKSHOP_RESERVATION=""`) if it isn't active yet.
