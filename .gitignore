@@ -1,0 +1,6 @@
+__pycache__/
+.pytest_cache/
+.venv/
+# Outputs if someone runs the scripts inside the repo instead of their workspace
+workshop/prompts/
+workshop/results/

@@ -1,0 +1,4 @@
+# The participant scripts only need llmflux (preinstalled on Delta via
+# `module load llmflux`). This file is for running the tests elsewhere.
+llmflux>=2.0,<3
+pytest>=7
