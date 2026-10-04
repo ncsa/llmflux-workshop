@@ -131,7 +131,7 @@ If you can't, the fallback (`sample_results/`) still lets everyone complete Part
       Fill in `workshop/workshop.conf` in this copy only. Don't commit real
       account or reservation names back to the public repo. Check the group:
       participants must be in the group that owns it (`ls -ld`, and `groups` as a
-      participant; expect `bccu`). For the pathology hackathon, `/projects/bhws` turned out not to
+      participant; expect `delta_bccu`). For the pathology hackathon, `/projects/bhws` turned out not to
       be readable by the account that needed it, so check this as a real
       participant, not as yourself.
 
@@ -158,7 +158,7 @@ reservation (`WORKSHOP_RESERVATION=""`) if it isn't active yet.
    download ~15 GB. Once, as yourself:
    ```bash
    export HF_HOME=/projects/bccu/llmflux-workshop/hf-cache
-   huggingface-cli download Qwen/Qwen2.5-7B-Instruct    # `hf download` on newer huggingface_hub
+   hf download Qwen/Qwen2.5-7B-Instruct    # `huggingface-cli` no longer works on Delta
    chmod -R g+rwX "$HF_HOME" && find "$HF_HOME" -type d -exec chmod g+s {} +
    ```
    Group-*writable* on purpose: the HuggingFace library takes lock files in the
@@ -218,6 +218,7 @@ Common rescues:
   rejects a request whose `body.model` doesn't exactly match the engine's internal
   name (the HuggingFace repo, for vLLM), which is a confusing error for
   first-timers. LLMFlux fills it in from `--model`.
-- LLMFlux finds its `.env` relative to its own install, not the participant's
-  directory, so `workshop.env` is a file participants `source` rather than a
-  `.env` they edit.
+- LLMFlux reads `~/.env` (the home directory), not a `.env` in the workshop
+  folder, so `workshop.env` is a file participants `source` rather than a
+  `.env` they edit. A participant with their own `~/.env` gets its settings in
+  their jobs too.
