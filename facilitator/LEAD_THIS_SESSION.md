@@ -12,10 +12,12 @@ before, you can run the hands-on too. Everything else is in
 
 - [ ] An NCSA login on the system the workshop is configured for, and membership
       in the workshop's Slurm account. To check: log in and run `accounts`. The
-      account named in the shared `workshop/workshop.conf` must be listed.
+      account named in the shared `workshop/workshop.conf` must be listed. For
+      the Oct 6 workshop that's `bccu-delta-gpu`, on Delta.
 - [ ] The **shared folder** path (a clone of this repo on the cluster, with
-      `workshop/workshop.conf` filled in). Ask whoever set it up, or check the
-      facilitator guide's prep notes.
+      `workshop/workshop.conf` filled in). For the Oct 6 workshop it's
+      `/projects/bccu/llmflux-workshop`. Otherwise ask whoever set it up, or
+      check the facilitator guide's prep notes.
 - [ ] This repo open in a browser, to put on screen and share.
 
 ## Pick a format

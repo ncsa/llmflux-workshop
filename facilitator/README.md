@@ -29,7 +29,7 @@ come only for this session.
 
 | Time | Min | Segment | Notes |
 | --- | --- | --- | --- |
-| 10:00 | 2 | **Log in first.** *"Open Open OnDemand like yesterday and get a Delta shell open."* Facilitators help anyone stuck. | Login problems found now get fixed during the talk instead of holding up the hands-on. The presenter submits the demo job now. |
+| 10:00 | 2 | **Log in first.** *"Open Open OnDemand like yesterday and get a Delta shell open."* Facilitators help anyone stuck, and pair anyone without a laptop with a neighbor. | Login problems found now get fixed during the talk instead of holding up the hands-on. The presenter submits the demo job now. |
 | 10:02 | 15 | **Talk** ([`presenter/TALK.md`](../presenter/TALK.md)), ending with the demo job's results | |
 | 10:17 | 13 | **Demos:** Illinois Chat, LLMHub ([`presenter/DEMOS.md`](../presenter/DEMOS.md) §1–2) | **This is the buffer.** Shorten it or cut it if the room is behind. |
 | 10:30 | 50 | **Hands-on:** participant guide, Parts 2–7 | Target: **everyone has submitted by 10:50.** Watch `squeue -R <reservation>`. While jobs are queued, participants read `sample_results/`. |
@@ -42,26 +42,40 @@ If you're far behind, have participants run `show_results.py` on
 `sample_results/` and skip submitting their own job. If you're ahead, add the
 "Live change" or "`llmflux serve`" extras from `TALK.md`.
 
-## Delta or DeltaAI?
+## Account, system, and shared folder
 
-As of Oct 2 it's **not known which system the reservation is on**, and the event
-is sponsored by both. The materials work on either. Set `WORKSHOP_SYSTEM`,
-`WORKSHOP_PARTITION`, and `WORKSHOP_ACCOUNT` in `workshop.conf` (the table at the
-top of that file lists each system's values). Setup and submit then refuse to run
-from the wrong cluster or with a partition that doesn't match.
+Confirmed by Greg Bauer on Oct 4: attendees are being added to the ACCESS
+**Delta Training** project, `delta_bccu`. That gives them two Slurm accounts:
 
-| | Delta | DeltaAI |
-| --- | --- | --- |
-| GPUs per node | 4× A100 (x86) | 4× GH200 (ARM) |
-| Partition | `gpuA100x4` | `ghx4` |
-| llmflux install | `module load llmflux`, in Delta's docs | `module load llmflux`, in DeltaAI's docs. **Installed by Josh and not yet tested end to end, so dry-run it first.** |
-| Container image | x86 `.sif` | ARM `.sif`. **An image built on one system won't run on the other.** |
-| Model weights (`HF_HOME`) | One shared cache works for both systems: `/projects` is mounted on both | |
+| Slurm account | Use |
+| --- | --- |
+| `bccu-delta-gpu` | **This one.** Every workshop job requests a GPU. |
+| `bccu-delta-cpu` | CPU-only jobs. Not used by this session. |
 
-**Until you know which system it is, dry-run both.** If DeltaAI fails and can't
-be fixed in time, ask NCSA whether the reservation can move to Delta. Failing
-that, the demo can run on Delta from the presenter's own allocation while the
-hands-on uses `sample_results/`.
+These are Delta accounts, so **the workshop runs on Delta** (A100s, partition
+`gpuA100x4`). Participants have no DeltaAI allocation through this project. In
+the shared `workshop.conf` set:
+
+```bash
+WORKSHOP_SYSTEM="delta"
+WORKSHOP_ACCOUNT="bccu-delta-gpu"
+WORKSHOP_PARTITION="gpuA100x4"
+```
+
+Do that in the copy on Delta only, not in the repo (see `CLAUDE.md`).
+
+Files participants need to read go in **`/projects/bccu`** (`/work/hdd/bccu`
+also works). Use `/projects/bccu/llmflux-workshop` for the clone, the shared
+weights cache, and the sample results. The paths below assume it.
+
+The materials still support DeltaAI (the table at the top of `workshop.conf`
+lists its values), for reuse at another event.
+
+## Laptops
+
+Attendees bring their own laptop. Anyone without one shoulder-surfs with
+another participant: pair them up during the 10:00 log-in, not at the start of
+the hands-on. Pairs share one job, so they don't add to the queue.
 
 ## Capacity: will the queue keep up?
 
@@ -95,28 +109,29 @@ If you can't, the fallback (`sample_results/`) still lets everyone complete Part
 
 ### As soon as possible
 
-- [ ] **Participant accounts.** Confirm every participant has a login on the right system, has set
+- [ ] **Participant accounts.** Confirm every participant has a Delta login, is
+      in `delta_bccu` (Greg Bauer's team is adding them), has set
       their password, and has enrolled in NCSA Duo, *before the day*. Send the
       Part 1 instructions out in advance and ask everyone to log in once. This is
       the most likely thing to eat the first 20 minutes.
-- [ ] **Reservation.** Find out what was requested: which system, how many
-      nodes, which partition, and which day and time. It needs to cover Tuesday
+- [ ] **Reservation.** Find out what was requested: how many
+      nodes on `gpuA100x4`, and which day and time. It needs to cover Tuesday
       09:30–12:00 (the extra time before is for your own checks), and Monday
       12:45–2:30 too if the genomics-session fill might be hands-on rather than a
-      demo. Ask NCSA to confirm the participants' account is allowed to use it
+      demo. Ask NCSA to confirm `bccu-delta-gpu` is allowed to use it
       (`scontrol show res <name>` lists the accounts).
-- [ ] **Account name.** Run `accounts` as a participant-equivalent user.
-      GPU accounts end in `-delta-gpu` on Delta and `-dtai-gh` on DeltaAI.
+- [ ] **Account.** Run `accounts` as a participant-equivalent user and check
+      `bccu-delta-gpu` is listed.
 - [ ] **Shared folder.** Clone this repo somewhere every participant can read:
       ```bash
-      git clone <this repo's URL> /projects/<project>/llmflux-workshop
+      git clone <this repo's URL> /projects/bccu/llmflux-workshop
       ```
       The weights cache and sample results (below) go in there too. Participants
-      then run `bash /projects/<project>/llmflux-workshop/workshop/setup_workshop.sh`.
+      then run `bash /projects/bccu/llmflux-workshop/workshop/setup_workshop.sh`.
       Fill in `workshop/workshop.conf` in this copy only. Don't commit real
       account or reservation names back to the public repo. Check the group:
       participants must be in the group that owns it (`ls -ld`, and `groups` as a
-      participant). For the pathology hackathon, `/projects/bhws` turned out not to
+      participant; expect `bccu`). For the pathology hackathon, `/projects/bhws` turned out not to
       be readable by the account that needed it, so check this as a real
       participant, not as yourself.
 
@@ -127,8 +142,6 @@ dry run as early as possible, so there's still time to fix what it finds.
 
 Do all of this as a test participant account if you can get one, and without the
 reservation (`WORKSHOP_RESERVATION=""`) if it isn't active yet.
-
-Do steps 1, 4, and 5 on **each system** that might host the reservation.
 
 1. **Check the module.**
    ```bash
@@ -144,7 +157,7 @@ Do steps 1, 4, and 5 on **each system** that might host the reservation.
 2. **Stage the model weights** into a shared `HF_HOME` so participants don't each
    download ~15 GB. Once, as yourself:
    ```bash
-   export HF_HOME=/projects/<project>/llmflux-workshop/hf-cache
+   export HF_HOME=/projects/bccu/llmflux-workshop/hf-cache
    huggingface-cli download Qwen/Qwen2.5-7B-Instruct    # `hf download` on newer huggingface_hub
    chmod -R g+rwX "$HF_HOME" && find "$HF_HOME" -type d -exec chmod g+s {} +
    ```
@@ -160,8 +173,8 @@ Do steps 1, 4, and 5 on **each system** that might host the reservation.
    ```bash
    python make_prompts.py --dataset genomics && bash submit.sh prompts/genomics-all.jsonl
    # ...once both jobs finish:
-   mkdir -p /projects/<project>/llmflux-workshop/sample_results
-   cp ~/llmflux-workshop/results/{all,genomics-all}.json /projects/<project>/llmflux-workshop/sample_results/
+   mkdir -p /projects/bccu/llmflux-workshop/sample_results
+   cp ~/llmflux-workshop/results/{all,genomics-all}.json /projects/bccu/llmflux-workshop/sample_results/
    ```
    Set `WORKSHOP_SAMPLE_RESULTS` to that directory. Participants who've already
    run setup get it by re-running `setup_workshop.sh`.
@@ -197,8 +210,9 @@ Common rescues:
 
 ## Known limits
 
-- Everything here was written against LLMFlux 2.0.0 and **has not yet been run on
-  Delta**. The dry run above is the real test. The tests (`python -m pytest`)
+- Everything here was written against LLMFlux 2.0.0 and dry-run on Delta and
+  DeltaAI on Oct 2 (the Capacity numbers), but **not yet as a `delta_bccu`
+  participant** or with a full room's jobs at once. The tests (`python -m pytest`)
   cover the scripts' logic, with Slurm and `llmflux` faked out.
 - The participant JSONL leaves `model` out of each request on purpose. LLMFlux
   rejects a request whose `body.model` doesn't exactly match the engine's internal

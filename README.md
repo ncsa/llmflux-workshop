@@ -80,8 +80,9 @@ compute node show up in your directory on the login node.
 
 NCSA runs two GPU clusters that work almost identically for this exercise:
 **Delta** (NVIDIA A100 GPUs) and **DeltaAI** (NVIDIA GH200 "Grace Hopper"
-GPUs). **Your facilitator will tell you which one we're using today.** Use that
-row of this table for everything below:
+GPUs). **At the Oct 6 Regional Workshop on AI we're using Delta.** At any other
+event, your facilitator will tell you which one. Use that column of this table
+for everything below:
 
 | | Delta | DeltaAI |
 | --- | --- | --- |
@@ -90,9 +91,10 @@ row of this table for everything below:
 | Shell menu item | **>_Delta Shell Access** | **>_DeltaAI Shell Access** |
 | Login node names start with | `dt-login` | `gh-login` |
 
-You'll need your NCSA username, your password, and the **NCSA Duo** app on your
-phone. If you haven't set those up yet, tell a facilitator now; this is the one
-step that can't be fixed quickly during the session.
+You'll need your own laptop (no laptop? Share with the person next to you), your
+NCSA username, your password, and the **NCSA Duo** app on your phone. If you
+haven't set those up yet, tell a facilitator now; this is the one step that
+can't be fixed quickly during the session.
 
 **If you've already logged in at this workshop** (for example in Monday's Track
 1 session), do it the same way. Open OnDemand (option B) is the easiest.
