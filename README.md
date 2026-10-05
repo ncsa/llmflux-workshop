@@ -79,7 +79,7 @@ compute node show up in your directory on the login node.
 ## Part 1 — Log in (≈5 min)
 
 NCSA runs two GPU clusters that work almost identically for this exercise:
-**Delta** (NVIDIA A100 GPUs) and **DeltaAI** (NVIDIA GH200 "Grace Hopper"
+**Delta** (NVIDIA A100 and A40 GPUs) and **DeltaAI** (NVIDIA GH200 "Grace Hopper"
 GPUs). **At the Oct 6 Regional Workshop on AI we're using Delta.** At any other
 event, your facilitator will tell you which one. Use that column of this table
 for everything below:
@@ -250,8 +250,8 @@ bash submit.sh prompts/all.jsonl
 ```
 Running:
   llmflux run --model Qwen2.5-7B-Instruct --input prompts/all.jsonl \
-    --output .../results/all.json --account XXXX-delta-gpu --partition gpuA100x4 \
-    --time 00:20:00 --sbatch-arg reservation=XXXX
+    --output .../results/all.json --account XXXX-delta-gpu --partition gpuA40x4 \
+    --time 00:20:00
 
 Job ID: 1234567
 ```
@@ -263,9 +263,9 @@ Here's what each part of that command does:
 | `--model` | Which LLM to run. `llmflux show-models` lists all the options. |
 | `--input` / `--output` | Your requests, and where to write the answers |
 | `--account` | Which allocation pays for the GPU time |
-| `--partition` | Which group of nodes to use (`gpuA100x4` on Delta: nodes with 4 A100 GPUs; `ghx4` on DeltaAI: 4 GH200s) |
+| `--partition` | Which group of nodes to use (`gpuA40x4` on Delta: nodes with 4 NVIDIA A40 GPUs, where today's reserved nodes are; `gpuA100x4` has A100s; `ghx4` on DeltaAI: 4 GH200s) |
 | `--time` | The longest the job may run. Slurm stops it after that. Ask for a bit more than you need. |
-| `--sbatch-arg reservation=…` | Use the nodes set aside for this workshop |
+| `--sbatch-arg reservation=…` | Use the nodes set aside for a workshop. Only there if the workshop names its reservation; today's is picked up automatically from the account. |
 
 **Write down your job ID.** You'll use it in the next part.
 

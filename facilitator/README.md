@@ -32,7 +32,7 @@ come only for this session.
 | 10:00 | 2 | **Log in first.** *"Open Open OnDemand like yesterday and get a Delta shell open."* Facilitators help anyone stuck, and pair anyone without a laptop with a neighbor. | Login problems found now get fixed during the talk instead of holding up the hands-on. The presenter submits the demo job now. |
 | 10:02 | 15 | **Talk** ([`presenter/TALK.md`](../presenter/TALK.md)), ending with the demo job's results | |
 | 10:17 | 13 | **Demos:** Illinois Chat, LLMHub ([`presenter/DEMOS.md`](../presenter/DEMOS.md) §1–2) | **This is the buffer.** Shorten it or cut it if the room is behind. |
-| 10:30 | 50 | **Hands-on:** participant guide, Parts 2–7 | Target: **everyone has submitted by 10:50.** Watch `squeue -R <reservation>`. While jobs are queued, participants read `sample_results/`. |
+| 10:30 | 50 | **Hands-on:** participant guide, Parts 2–7 | Target: **everyone has submitted by 10:50.** Watch `squeue -A bccu-delta-gpu`. While jobs are queued, participants read `sample_results/`. |
 | 11:20 | 15 | **Debrief.** Put two participants' results on screen. Did classify stay in the label set? Did any JSON fail? Then Part 8 (deployment strategies) and Q&A. | |
 | 11:35 | 10 | Wrap-up: links, Part 9 (cancel jobs), slack for overruns | |
 
@@ -52,15 +52,35 @@ Confirmed by Greg Bauer on Oct 4: attendees are being added to the ACCESS
 | `bccu-delta-gpu` | **This one.** Every workshop job requests a GPU. |
 | `bccu-delta-cpu` | CPU-only jobs. Not used by this session. |
 
-These are Delta accounts, so **the workshop runs on Delta** (A100s, partition
-`gpuA100x4`). Participants have no DeltaAI allocation through this project. In
-the shared `workshop.conf` set:
+These are Delta accounts, so **the workshop runs on Delta**. Participants have
+no DeltaAI allocation through this project.
+
+**The reservation** (confirmed Oct 5) is *magnetic*: any `bccu-delta-gpu` job
+that fits the reserved nodes goes into it without naming it. Its GPU nodes are
+**A40** nodes, so jobs must ask for the **`gpuA40x4`** partition. A job that asks
+for `gpuA100x4` skips the reservation and waits in the general queue. Find it,
+and its time window, with:
+
+```bash
+scontrol show res | grep -B3 -A10 bccu-delta-gpu     # Flags=...MAGNETIC, the GPU nodes, start and end
+```
+
+It covers the whole workshop, not just this session: other sessions' `bccu`
+participants use the same nodes. So the room gets *up to* 8 GPUs (2 nodes × 4
+A40s), not a guaranteed 8.
+
+In the shared `workshop.conf` set:
 
 ```bash
 WORKSHOP_SYSTEM="delta"
 WORKSHOP_ACCOUNT="bccu-delta-gpu"
-WORKSHOP_PARTITION="gpuA100x4"
+WORKSHOP_RESERVATION=""          # magnetic: jobs land in it anyway
+WORKSHOP_PARTITION="gpuA40x4"    # where the reservation's GPU nodes are
 ```
+
+Leave the reservation name out. Jobs reach it without one, and a job that names
+a reservation that has ended is rejected, so after the reservation ends,
+participants' jobs still work and just go to the general queue.
 
 Do that in the copy on Delta only, not in the repo (see `CLAUDE.md`).
 
@@ -80,25 +100,28 @@ the hands-on. Pairs share one job, so they don't add to the queue.
 ## Capacity: will the queue keep up?
 
 Each participant job requests **one GPU**. Slurm allocates whole GPUs, so a
-reserved 4-GPU node (`gpuA100x4` or `ghx4`) runs **4 jobs at once**. Measured in
-the Oct 2 dry run (Qwen2.5-7B, 48 requests, weights already in the shared cache):
+reserved 4-GPU node (`gpuA40x4`, `gpuA100x4`, or `ghx4`) runs **4 jobs at once**. Measured in
+the Oct 2–5 dry runs (Qwen2.5-7B, 48 requests, weights already in the shared cache):
 
-| | Delta (A100) | DeltaAI (GH200) |
-| --- | --- | --- |
-| Whole job (container start + model load + 48 requests) | ~2.5 min | ~1 min |
-| Of which: answering the 48 requests | 21–26 s | 9–11 s |
-| First job ever (also downloads the 15 GB of weights) | n/a: DeltaAI's job had already cached them | ~2 min |
+| | **Delta (A40), the reservation** | Delta (A100) | DeltaAI (GH200) |
+| --- | --- | --- | --- |
+| Whole job (container start + model load + 48 requests) | **~3 min** (2:50) | ~2.5 min | ~1 min |
+| Of which: answering the 48 requests | **48 s** | 21–26 s | 9–11 s |
+| First job ever (also downloads the 15 GB of weights) | n/a | n/a | ~2 min |
 
 ```
 time for the whole room to finish one job ≈ participants × job_minutes / (nodes × 4)
 ```
 
-| Participants | Reserved nodes | GPUs | Room finishes one run in, Delta | DeltaAI |
-| --- | --- | --- | --- | --- |
-| 20 | 1 | 4 | ~13 min | ~5 min |
-| 30 | 1 | 4 | ~19 min, tight | ~8 min |
-| 30 | 2 | 8 | ~10 min | ~4 min |
-| 40 | 3 | 12 | ~9 min | ~4 min |
+| Participants | Reserved nodes | GPUs | Room finishes one run in, A40 | A100 | DeltaAI |
+| --- | --- | --- | --- | --- | --- |
+| 20 | 1 | 4 | ~14 min | ~13 min | ~5 min |
+| 30 | 1 | 4 | ~21 min, too slow | ~19 min, tight | ~8 min |
+| **30** | **2** | **8** | **~11 min (Oct 6)** | ~10 min | ~4 min |
+| 40 | 3 | 12 | ~9 min | ~9 min | ~4 min |
+
+**Oct 6:** 2 reserved A40 nodes, 8 GPUs, but shared with other `bccu` sessions,
+so expect somewhat longer than ~11 min if they're running jobs too.
 
 These assume jobs don't slow each other down. Thirty jobs reading the same
 shared cache at once may load more slowly than one did, so treat them as best
@@ -114,8 +137,9 @@ If you can't, the fallback (`sample_results/`) still lets everyone complete Part
       their password, and has enrolled in NCSA Duo, *before the day*. Send the
       Part 1 instructions out in advance and ask everyone to log in once. This is
       the most likely thing to eat the first 20 minutes.
-- [ ] **Reservation.** Find out what was requested: how many
-      nodes on `gpuA100x4`, and which day and time. It needs to cover Tuesday
+- [x] **Reservation.** Done: a magnetic reservation on two `gpuA40x4` nodes
+      (see "Account, system, and shared folder"). For a future event, find out
+      what was requested: how many nodes, on which partition, and which day and time. It needs to cover Tuesday
       09:30–12:00 (the extra time before is for your own checks), and Monday
       12:45–2:30 too if the genomics-session fill might be hands-on rather than a
       demo. Ask NCSA to confirm `bccu-delta-gpu` is allowed to use it
@@ -194,9 +218,9 @@ reservation (`WORKSHOP_RESERVATION=""`) if it isn't active yet.
 ## During the session
 
 ```bash
-squeue -R <reservation>                         # everyone's jobs on the reservation
-squeue -R <reservation> -t PENDING | wc -l      # how backed up the queue is
-sacct -X -a -r <reservation> -S 10:00 --format=User,JobID,State,Elapsed   # who's finished
+squeue -A bccu-delta-gpu -o "%.10i %.10u %.8T %.12v %R"   # everyone's jobs; %v = the reservation each one is in
+squeue -A bccu-delta-gpu -t PENDING | wc -l                # how backed up the queue is
+sacct -X -a -A bccu-delta-gpu -S 10:00 --format=User,JobID,State,Elapsed   # who's finished
 ```
 
 Common rescues:
@@ -205,7 +229,8 @@ Common rescues:
 | --- | --- |
 | Participant's job FAILED | `llmflux logs <id>` on their terminal. Most likely: the shared cache isn't readable or writable for them, or the container dir isn't set. |
 | Queue backed up past ~10 min | Announce the sample results; have participants do Part 6 on `sample_results/all.json` while they wait. |
-| Many jobs stuck `(Reservation)` | Account isn't authorized for the reservation. Drop `WORKSHOP_RESERVATION` to `""` in the conf and have participants re-run setup and resubmit. They'll go to the general queue, which is slow, but jobs will still run. |
+| Jobs pending, with an empty reservation column in the `squeue` above | They didn't land in the reservation. Check `WORKSHOP_PARTITION` is the reservation's partition (`gpuA40x4`) and that the reservation is still active (`scontrol show res`). |
+| Jobs pending with `(Resources)` while the reservation is in use | The reserved GPUs are busy, possibly with other sessions' jobs. Normal for a few minutes; past ~10, announce the sample results. |
 | Someone ran a big model and it's stuck loading | `scancel <id>` with their permission. |
 
 ## Known limits

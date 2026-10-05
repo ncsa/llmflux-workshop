@@ -133,9 +133,9 @@ beyond chat.
 
 9. **The results.** Back to the terminal. `llmflux jobs --all`, then
    `python show_results.py results/all.json`. *"48 requests: about two minutes
-   to start the container and load the model, then about 20 seconds to answer
-   them all."* (Oct 4 dry run on Delta: 2.5 minutes in total, 21 seconds
-   answering.) The point to land: **loading the model takes most of the time**,
+   to start the container and load the model, then under a minute to answer
+   them all."* (Oct 5 test on the reservation's A40s: just under 3 minutes in
+   total, 48 seconds answering.) The point to land: **loading the model takes most of the time**,
    so one job with many requests is far more efficient than many small jobs.
    Spend some time on the **extract** section.
 
