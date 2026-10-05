@@ -68,7 +68,7 @@ For a bio-focused audience, use the genomics set: `python make_prompts.py --data
 
 1. **Before you start talking:** run `bash submit.sh prompts/all.jsonl` again
    (or the genomics one), so a fresh job is running while you talk.
-2. **Talk** (pick from [`TALK.md`](../presenter/TALK.md); slides 2, 3, 5, and 10
+2. **Talk** (pick from [`TALK.md`](../presenter/TALK.md); slides 3, 4, 6, and 11
    are the essentials):
    - Chat tools work one prompt at a time; research data comes in thousands.
    - Three ways to run an LLM: an assistant grounded in documents (Illinois

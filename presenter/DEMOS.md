@@ -1,6 +1,6 @@
 # Presenter script: live demos
 
-Three demos, one for each of the deployment strategies in `TALK.md` slide 3:
+Three demos, one for each of the deployment strategies in `TALK.md` slide 4:
 **an assistant grounded in documents, a model running as a service, and a batch
 job.** The point of each is to show how that kind of tool works and what it's
 suited to, not to promote the tool. Each has a goal, the steps, what to say, and a
@@ -137,7 +137,7 @@ python make_prompts.py                    # add --dataset genomics for a bio aud
 bash submit.sh prompts/all.jsonl          # note the job ID
 ```
 
-**Near the end of the talk (`TALK.md` slide 9), on screen:**
+**Near the end of the talk (`TALK.md` slide 10), on screen:**
 
 1. `head -3 data/abstracts.csv`: *"Here's our data: a spreadsheet."*
 2. `head -1 prompts/all.jsonl | python -m json.tool`: *"Each row becomes a request,
