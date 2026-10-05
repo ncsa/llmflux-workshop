@@ -55,7 +55,7 @@ the dry-run results in `sample_results/` for the demo, and say that's what they 
 
 1. **Before you start talking:** run the `make_prompts.py` and `submit.sh` lines
    above (with a fresh job), so it's running while you talk.
-2. **Talk** (pick from [`TALK.md`](../presenter/TALK.md); slides 2, 4, 5, and 10
+2. **Talk** (pick from [`TALK.md`](../presenter/TALK.md); slides 2, 3, 5, and 10
    are the essentials):
    - Chat tools work one prompt at a time; research data comes in thousands.
    - Three ways to use an LLM on campus: a hosted assistant (Illinois Chat), a

@@ -1,8 +1,10 @@
 # Presenter script: live demos
 
-Three demos, in the order of the session's arc: **talk to a model → build with
-one → run one at scale on the cluster.** Each has a goal, the steps, what to say,
-and a fallback. Rehearse all three on the venue network if you can.
+Three demos, one for each of the deployment strategies in `TALK.md` slide 3:
+**an assistant grounded in documents, a model running as a service, and a batch
+job.** The point of each is to show how that kind of tool works and what it's
+suited to, not to promote the tool. Each has a goal, the steps, what to say, and a
+fallback. Rehearse all three on the venue network if you can.
 
 Lines marked **☐ VERIFY** are things to confirm in your own account before the
 day. They're written as a user-level view, without admin access.
@@ -11,10 +13,11 @@ day. They're written as a user-level view, without admin access.
 
 ## 1. Illinois Chat — an assistant grounded in *your* documents (≈15 min)
 
-**Goal:** show the step from a generic chatbot to an assistant that answers from
-a specific body of documents and shows its sources. This is retrieval-augmented
-generation (RAG), the first thing that makes an LLM useful for research work.
-Then hand participants that assistant to use during the hands-on.
+**Goal:** show the difference between a general chatbot and an assistant that
+answers from a specific set of documents and shows its sources. The technique is
+called retrieval-augmented generation (RAG): the system finds relevant passages
+first, then gives them to the model along with the question. Then share the
+assistant so participants can use it during the hands-on.
 
 **Prep (day before, not live — ingestion takes time):**
 
@@ -31,7 +34,8 @@ Then hand participants that assistant to use during the hands-on.
 
 1. Ask a general chat model a Delta-specific question it can't know,
    e.g. *"What partition should I use for A100 jobs on Delta, and what's the maximum walltime?"*
-   Point out the confident but generic or wrong answer.
+   Point out that the answer sounds confident either way, even when it's
+   generic or wrong. Models don't signal when they're guessing.
 2. Switch to the grounded project and ask the same question. Point out the
    specific answer **and its citations**: you can click through and check it.
 3. Ask something only the workshop docs know: *"What does `submit.sh` do, and why
@@ -39,12 +43,15 @@ Then hand participants that assistant to use during the hands-on.
 4. Ask it to write something: *"Write a new TASKS entry for make_prompts.py that
    extracts the study's limitations as a JSON list."* Keep this answer, because it's
    exactly what participants do in Part 7B of the guide.
-5. Share the link: *"This is your helper for the next hour."*
+5. Share the link: *"You can use this during the hands-on. Check its answers
+   against the guide, the same way we just checked its citations."*
 
-**What to say:** a hosted assistant is the right tool when the work is
-conversational and one task at a time. Grounding in your documents plus citations
-is what makes it trustworthy enough for research. Its limits: you're working one
-conversation at a time, on someone else's compute, with their model choices.
+**What to say:** a hosted assistant suits work that's conversational and one
+question at a time. Grounding it in your documents makes its answers more
+relevant, and citations let you check them. They don't make it always right: it
+can still misread a source, so you click through. Its limits: one conversation
+at a time, on a service someone else runs, with the models they've chosen to
+offer.
 
 **Fallback:** screenshots of steps 1–4 in the slides.
 
@@ -52,11 +59,12 @@ conversation at a time, on someone else's compute, with their model choices.
 
 ## 2. LLMHub — open models on NCSA hardware, as a service (≈10 min)
 
-**Goal:** the step after a hosted assistant. LLMHub (CAII's platform on NCSA
-infrastructure) lets you **pick an open model, launch it on the cluster, chat with
-it, share it, and call it from code** through an OpenAI-compatible API. The point
-for this audience: *you* choose the model, and the same API your code would send to
-a commercial provider now goes to a model running on campus hardware.
+**Goal:** show what it means to run a model as a service. LLMHub (CAII's
+platform on NCSA infrastructure) starts an open model on cluster GPUs and keeps it
+running, so you can chat with it in a browser or send it requests from code. The
+concept to teach: the request format most tools use (OpenAI's API format) isn't
+tied to one company. The same code can talk to a commercial provider or to a model
+running on campus hardware, by changing the address it sends to.
 
 **Prep (day before):**
 
@@ -78,7 +86,7 @@ a commercial provider now goes to a model running on campus hardware.
    a minute, but managed for you."*
 3. **Chat** with it in the browser. Ask the same question you used in demo 1, for
    a direct comparison.
-4. **Call it from code.** This is the slide-worthy moment:
+4. **Call it from code.** Put this on a slide too:
    ```python
    from openai import OpenAI
    client = OpenAI(base_url="<deployment endpoint>/v1", api_key="<key>")
@@ -87,18 +95,19 @@ a commercial provider now goes to a model running on campus hardware.
        messages=[{"role": "user", "content": "Classify this abstract: ..."}])
    print(r.choices[0].message.content)
    ```
-   *"That's the standard OpenAI client. Any agent framework or coding agent that
-   can use OpenAI can be pointed here instead."*
+   *"That's the standard OpenAI client library. Only the address and the key
+   changed. Most tools that work with OpenAI's API, including agent frameworks,
+   let you change the address the same way."*
 5. **Sharing** (☐ VERIFY the UI): a deployment can be shared with a colleague,
    so a lab can share one model server.
 6. **Bridge to demo 3:** *"An API is right for interactive use and agents. But if
    you need that same call 50,000 times over a dataset, you want a batch job that
    starts, does the work, and gives the GPU back."*
 
-**What to say:** the three tools form a ladder. Illinois Chat is an assistant
-that answers from your documents. LLMHub is a model service you choose and call
-from code. LLMFlux is batch runs on your own allocation. They're all open models
-on campus hardware.
+**What to say:** a model service suits interactive use: an application, an
+agent, or a script that sends requests as it goes. The cost is that it holds a
+GPU the whole time it's running, whether or not anyone is using it. That's the
+tradeoff the next demo addresses.
 
 **Fallback:** screenshots of steps 1–4, plus the code snippet on a slide.
 
@@ -106,9 +115,9 @@ on campus hardware.
 
 ## 3. LLMFlux on Delta — the same kind of call, at scale (≈5 min live + reveals)
 
-**Goal:** show that the step participants are about to take is small. One command
-turns a spreadsheet into a GPU job, and the output is structured data they can
-check. Use the "cooking show" approach: submit at the start of the session and
+**Goal:** show what a batch job does from start to finish, before participants
+run one themselves: data in a spreadsheet, a file of requests, a job in the queue,
+and structured output they then check. Use the "cooking show" approach: submit at the start of the session and
 reveal the result later, so nobody watches a model load.
 
 **Right before you start talking** (in a terminal you'll put on screen later;
@@ -121,26 +130,28 @@ python make_prompts.py                    # add --dataset genomics for a bio aud
 bash submit.sh prompts/all.jsonl          # note the job ID
 ```
 
-**Near the end of the talk (`TALK.md` slide 8), on screen:**
+**Near the end of the talk (`TALK.md` slide 9), on screen:**
 
 1. `head -3 data/abstracts.csv`: *"Here's our data: a spreadsheet."*
 2. `head -1 prompts/all.jsonl | python -m json.tool`: *"Each row becomes a request,
    in the same format OpenAI's batch API uses."*
-3. Scroll back to the `submit.sh` output: *"One command. It wrote a Slurm job,
-   which waited for a GPU, loaded the model, answered 48 requests, and released the GPU."*
+3. Scroll back to the `submit.sh` output and walk through what happened: *"This
+   wrote a Slurm job. The job waited for a GPU, started a container, loaded the
+   model, answered 48 requests, and released the GPU."*
 4. `llmflux jobs --all` and `llmflux logs <id> --tail 30`: show the model load and
    the request throughput lines.
-5. `python show_results.py results/all.json`: the reveal. Linger on the
-   **extract** section: *"This is structured data your next script can consume,
-   and we validate it. Notice the line that tells us how many replies are usable."*
+5. `python show_results.py results/all.json`: the results. Spend time on the
+   **extract** section: *"This is structured data a script can use. Before we
+   trust it, we check it. This line says how many replies passed the format
+   checks. Next, we'll look at what those checks can't catch."*
 
-**What to say:** the same model call you just made in a chat window, made 48 times
-(or 48,000) without anyone sitting there. It runs on your allocation, with an open
-model, and writes its output in a format you can check automatically. Agents and
-assistants design the step; batch runs it at scale. `llmflux serve` closes the
-loop, putting an OpenAI-compatible endpoint on your allocation that agent tools
-can point at.
+**What to say:** it's the same kind of request you'd type in a chat window, sent
+48 times (or 48,000) without anyone sitting there. A batch job uses the GPU only
+while there's work, and writes output in a format you can check automatically.
+The tradeoff is the wait: it queues like any other job, and loading the model
+takes longer than answering. Use an assistant or a service to design the step,
+and a batch job to run it over the whole dataset.
 
 **Fallback (Delta down, or job not done):** open `sample_results/all.json` from the
-dry run and run `show_results.py` on that. It's the same output, made a week
-earlier. Say so; it's still real.
+dry run and run `show_results.py` on that. It's the same kind of output, from
+the dry run before the session. Say so; it's still real.
