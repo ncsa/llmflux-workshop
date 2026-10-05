@@ -1,5 +1,11 @@
 # The talk: ~15 minutes, leading into the hands-on
 
+
+
+
+
+
+
 For the **"LLM Flux"** session: Tuesday Oct 6, 10:00–11:45, Track 1, Room 1030,
 at the NCSA Regional Workshop on AI. The session listing promises *"LLM workflows,
 fine-tuning, and deployment strategies"*, so the talk is built around those three.
@@ -31,9 +37,14 @@ beyond chat.
 
 ## Before you walk up
 
-- Your workspace is set up (`setup_workshop.sh`), and prompts are built (`python make_prompts.py`).
-- A terminal is logged in to Delta with `source ~/llmflux-workshop/workshop.env` already run.
-- `sample_results/all.json` from the dry run is in place as a fallback.
+- A terminal logged in to Delta (Open OnDemand → **Clusters** → **>_Delta Shell
+  Access**), with these already run:
+  ```bash
+  bash /projects/bccu/llmflux-workshop/workshop/setup_workshop.sh   # once
+  source ~/llmflux-workshop/workshop.env                            # every login
+  python make_prompts.py
+  ```
+- The fallback is already in your workspace: `sample_results/all.json`, from the dry run.
 - The repo link (and a QR code for it) is on your last slide.
 - **Decide in advance:** if the job hasn't finished by slide 9, show the sample
   results and say so ("this one ran during my dry run").

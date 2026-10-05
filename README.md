@@ -137,12 +137,14 @@ the setup in Part 2 will stop you if you're on the wrong cluster.
 
 ## Part 2 — Set up your workshop folder (≈5 min)
 
-Your facilitator will show a **shared workshop folder** path on screen. Run the
-setup script inside it, replacing the start of the path below with that one:
+Run the setup script from the workshop's shared folder on Delta. Copy this line
+exactly:
 
 ```bash
-bash /shared/folder/from/facilitator/workshop/setup_workshop.sh
+bash /projects/bccu/llmflux-workshop/workshop/setup_workshop.sh
 ```
+
+(At a different event, your facilitator will give you a different folder.)
 
 This creates `~/llmflux-workshop` (the `~` means your home directory) with the
 exercise files in it, plus a settings file called `workshop.env`. Now load the

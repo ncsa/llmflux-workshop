@@ -120,8 +120,13 @@ run one themselves: data in a spreadsheet, a file of requests, a job in the queu
 and structured output they then check. Use the "cooking show" approach: submit at the start of the session and
 reveal the result later, so nobody watches a model load.
 
-**Right before you start talking** (in a terminal you'll put on screen later;
-set up your own workspace in advance with `setup_workshop.sh`, as participants do):
+**Once, any time before the session**, on Delta:
+
+```bash
+bash /projects/bccu/llmflux-workshop/workshop/setup_workshop.sh
+```
+
+**Right before you start talking** (in a terminal you'll put on screen later):
 
 ```bash
 source ~/llmflux-workshop/workshop.env
