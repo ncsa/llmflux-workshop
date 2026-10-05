@@ -42,6 +42,7 @@ beyond chat.
   ```bash
   bash /projects/bccu/llmflux-workshop/workshop/setup_workshop.sh   # once
   source ~/llmflux-workshop/workshop.env                            # every login
+  cd ~/llmflux-workshop                                             # run everything from here
   python make_prompts.py
   ```
 - The fallback is already in your workspace: `sample_results/all.json`, from the dry run.

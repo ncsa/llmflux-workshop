@@ -28,11 +28,13 @@ Bauer to add you, and do it the day before.
 
 ## Pre-flight (20 minutes, before the session)
 
-Log in to Delta (above), then copy these one at a time:
+Log in to Delta (above), then copy these one at a time. Everything after
+setup runs from **`~/llmflux-workshop`**, your own copy of the exercise:
 
 ```bash
 bash /projects/bccu/llmflux-workshop/workshop/setup_workshop.sh   # once; safe to re-run
 source ~/llmflux-workshop/workshop.env                            # after every login
+cd ~/llmflux-workshop                                             # run everything below from here
 python make_prompts.py                                            # builds 48 requests
 bash submit.sh prompts/all.jsonl                                  # prints the command, then "Job ID: ..."
 squeue -u $USER -o "%.10i %.8T %.12v %R"                          # your job

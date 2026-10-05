@@ -126,10 +126,12 @@ reveal the result later, so nobody watches a model load.
 bash /projects/bccu/llmflux-workshop/workshop/setup_workshop.sh
 ```
 
-**Right before you start talking** (in a terminal you'll put on screen later):
+**Right before you start talking** (in a terminal you'll put on screen later).
+Every command in this demo runs from `~/llmflux-workshop`:
 
 ```bash
 source ~/llmflux-workshop/workshop.env
+cd ~/llmflux-workshop
 python make_prompts.py                    # add --dataset genomics for a bio audience,
                                           # and use the genomics-all file names below
 bash submit.sh prompts/all.jsonl          # note the job ID
