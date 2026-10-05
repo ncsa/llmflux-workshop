@@ -100,7 +100,7 @@
 #let who(body) = box(height: 3.4em, align(center + top, body))
 
 #slide[Enter Batch Processing][
-  #v(0.3cm)
+  #v(1fr)
   #align(center, diagram(
     spacing: (0.55cm, 0.6cm),
     node-stroke: 1pt,
@@ -135,8 +135,9 @@
     node((4, 1.3), stroke: none,
       who[*You* \ #cmd[show_results.py] \ #text(16pt)[then your usual tools]]),
   ))
-  #v(-0.3cm)
-  #align(center, image("images/fake_llmflux_logo.png", height: 3.6cm))
+  #v(1fr)
+  #align(center, text(20pt)[LLMFlux: #link("https://github.com/Center-for-AI-Innovation/llmflux")])
+  #v(1fr)
 ]
 
 // ---- 6. ---------------------------------------------------------------------
