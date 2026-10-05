@@ -5,7 +5,7 @@ for **Tuesday Oct 6, 10:00–11:45, Room 1030, on NCSA Delta**: copy the command
 as they are. With 30 minutes you can run the demo; with an hour the day before,
 the hands-on too. The full facilitator guide is [`README.md`](README.md), the
 talk is [`../presenter/TALK.md`](../presenter/TALK.md) (slides:
-[`../presenter/slides.pdf`](../presenter/slides.pdf)), and participants follow
+[`../presenter/slides/slides.pdf`](../presenter/slides/slides.pdf)), and participants follow
 [`../README.md`](../README.md).
 
 **Built by:** Josh Allen. David Bianchi or the organizers can reach him on the day.

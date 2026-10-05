@@ -14,9 +14,11 @@ This is a teaching talk, not a product pitch. The goal is for people to understa
 how batch LLM inference on a cluster works and when it's the right tool. LLMFlux
 is how we do it today, not the subject.
 
-The slides themselves are [`slides.pptx`](slides.pptx) (to edit) and
-[`slides.pdf`](slides.pdf) (to view on GitHub). Re-export the PDF after editing.
-This file is the speaker's outline:
+The slides themselves are [`slides/slides.pdf`](slides/slides.pdf), built from
+[`slides/slides.typ`](slides/slides.typ) with [Typst](https://typst.app). To
+edit, change `slides.typ`, then run `typst compile slides.typ` in that folder
+(or `tinymist preview slides.typ` to see changes live). This file is the
+speaker's outline:
 slide *content*, not formatted slides. Each numbered item is roughly one slide at
 about 1.5 minutes. The talk contains one small live demo, started at the
 beginning and shown near the end. The full session plan, with the hands-on, is in
@@ -37,6 +39,14 @@ beyond chat.
 
 ## Before you walk up
 
+- **The slides**, full screen, from your laptop:
+  ```bash
+  evince --presentation ~/code/llmflux-workshop/presenter/slides/slides.pdf
+  ```
+  Arrow keys, Page Down, or a clicker to move; **B** blanks the screen (for
+  switching to the terminal); **Esc** leaves. Set the projector to **mirror**
+  your screen (Settings → Displays), so the room sees the terminal too. Backup:
+  the same PDF opens from GitHub on any machine.
 - A terminal logged in to Delta (Open OnDemand → **Clusters** → **>_Delta Shell
   Access**), with these already run:
   ```bash
@@ -182,7 +192,7 @@ beyond chat.
     50, count how many are wrong, and report that rate along with your results.
 
 12. **Now you.** The repo link, <https://github.com/ncsa/llmflux-workshop>,
-    and its QR code (`presenter/repo-qr.png`, or `.svg` to scale it up).
+    and its QR code (already on the slide; also `presenter/repo-qr.svg`).
     *"Open Open OnDemand like yesterday, and open this page next to it.
     Everything I just did, you're about to do."*
     → hands-on.
