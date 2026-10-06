@@ -10,7 +10,7 @@ For the **"LLM Flux"** session: Tuesday Oct 6, 10:00–11:45, Track 1, Room 1030
 at the NCSA Regional Workshop on AI. The session listing promises *"LLM workflows,
 fine-tuning, and deployment strategies"*, so the talk is built around those three.
 
-This is a teaching talk, not a product pitch. The goal is for people to understand
+This is a teaching talk. The goal is for people to understand
 how batch LLM inference on a cluster works and when it's the right tool. LLMFlux
 is how we do it today, not the subject.
 
@@ -187,6 +187,21 @@ beyond chat.
       - `p06`: the abstract doesn't give a sample size, and the model wrote the
         word `"null"` in quotes. A script counting missing values would count
         that as a real answer.
+
+      To put them on screen without scrolling back, clear the terminal and
+      show one abstract with every answer the model gave for it (swap `p09`
+      for whichever item you picked; use `sample_results/all.json` if you're
+      on the fallback):
+      ```bash
+      clear
+      grep p09 data/abstracts.csv
+      python show_results.py results/all.json --width 400 | grep p09
+      ```
+      To see just the extract answers for every abstract:
+      ```bash
+      clear
+      python show_results.py results/all.json --width 400 | sed -n '/=== extract/,/^$/p'
+      ```
 
     At 16 items you can read them all. At 16,000 you read a random sample, say
     50, count how many are wrong, and report that rate along with your results.
