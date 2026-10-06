@@ -120,10 +120,11 @@ run one themselves: data in a spreadsheet, a file of requests, a job in the queu
 and structured output they then check. Use the "cooking show" approach: submit at the start of the session and
 reveal the result later, so nobody watches a model load.
 
-**Once, any time before the session**, on Delta:
+**Once, any time before the session**, on the cluster (the facilitator has the
+shared folder path):
 
 ```bash
-bash /projects/bccu/llmflux-workshop/workshop/setup_workshop.sh
+bash /SHARED/FOLDER/workshop/setup_workshop.sh
 ```
 
 **Right before you start talking** (in a terminal you'll put on screen later).

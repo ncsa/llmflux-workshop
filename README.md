@@ -80,9 +80,8 @@ compute node show up in your directory on the login node.
 
 NCSA runs two GPU clusters that work almost identically for this exercise:
 **Delta** (NVIDIA A100 and A40 GPUs) and **DeltaAI** (NVIDIA GH200 "Grace Hopper"
-GPUs). **At the Oct 6 Regional Workshop on AI we're using Delta.** At any other
-event, your facilitator will tell you which one. Use that column of this table
-for everything below:
+GPUs). **Your facilitator will tell you which one we're using.** Use that column
+of this table for everything below:
 
 | | Delta | DeltaAI |
 | --- | --- | --- |
@@ -96,8 +95,8 @@ NCSA username, your password, and the **NCSA Duo** app on your phone. If you
 haven't set those up yet, tell a facilitator now; this is the one step that
 can't be fixed quickly during the session.
 
-**If you've already logged in at this workshop** (for example in Monday's Track
-1 session), do it the same way. Open OnDemand (option B) is the easiest.
+**If you've already logged in at this workshop** (for example in an earlier
+session), do it the same way. Open OnDemand (option B) is the easiest.
 
 **Option A — a terminal (Mac, Linux, or Windows PowerShell):**
 
@@ -137,14 +136,15 @@ the setup in Part 2 will stop you if you're on the wrong cluster.
 
 ## Part 2 — Set up your workshop folder (≈5 min)
 
-Run the setup script from the workshop's shared folder on Delta. Copy this line
-exactly:
+Your facilitator will show a **shared workshop folder** path on screen. Run the
+setup script inside it, putting that path in place of `/SHARED/FOLDER`:
 
 ```bash
-bash /projects/bccu/llmflux-workshop/workshop/setup_workshop.sh
+bash /SHARED/FOLDER/workshop/setup_workshop.sh
 ```
 
-(At a different event, your facilitator will give you a different folder.)
+(For example, at the October 2026 NCSA workshop it was
+`bash /projects/bccu/llmflux-workshop/workshop/setup_workshop.sh`.)
 
 This creates `~/llmflux-workshop` (the `~` means your home directory) with the
 exercise files in it, plus a settings file called `workshop.env`. Now load the
@@ -265,9 +265,9 @@ Here's what each part of that command does:
 | `--model` | Which LLM to run. `llmflux show-models` lists all the options. |
 | `--input` / `--output` | Your requests, and where to write the answers |
 | `--account` | Which allocation pays for the GPU time |
-| `--partition` | Which group of nodes to use (`gpuA40x4` on Delta: nodes with 4 NVIDIA A40 GPUs, where today's reserved nodes are; `gpuA100x4` has A100s; `ghx4` on DeltaAI: 4 GH200s) |
+| `--partition` | Which group of nodes to use (on Delta, `gpuA40x4` has nodes with 4 NVIDIA A40 GPUs and `gpuA100x4` 4 A100s; `ghx4` on DeltaAI has 4 GH200s) |
 | `--time` | The longest the job may run. Slurm stops it after that. Ask for a bit more than you need. |
-| `--sbatch-arg reservation=…` | Use the nodes set aside for a workshop. Only there if the workshop names its reservation; today's is picked up automatically from the account. |
+| `--sbatch-arg reservation=…` | Use the nodes set aside for a workshop. Only there if the workshop names its reservation; some reservations are picked up automatically from the account instead. |
 
 **Write down your job ID.** You'll use it in the next part.
 
@@ -278,7 +278,7 @@ When it's your turn, Slurm will:
 1. give your job one GPU on a compute node
 2. start a container with the vLLM inference engine (a container is a packaged software environment, so it runs the same everywhere)
 3. load the model's weights onto the GPU
-4. send all 48 requests, several at a time
+4. send the 48 requests to the model, one after another
 5. write `results/all.json` and release the GPU
 
 You can log out at this point and the job keeps going. That's the advantage of
@@ -365,7 +365,7 @@ built into the pipeline.
 
 ---
 
-## Part 7 — Make it yours (rest of the time)
+## Part 7 — Make it yours (≈20 min)
 
 Choose one or more:
 
@@ -418,9 +418,8 @@ file before the prompt is right.
 
 **D. Try a different model.** `llmflux show-models` lists everything LLMFlux knows
 how to run. Bigger models are often better, but they're slower to load and some
-need more than one GPU, so ask a facilitator before you try one here. To run a
-different model, change the `--model` value in the `llmflux run` command that
-`submit.sh` printed and run that command yourself.
+need more than one GPU, so ask a facilitator before you try one here. Part 10
+shows how to run `llmflux run` yourself with a different `--model`.
 
 ---
 
@@ -455,7 +454,7 @@ LLMFlux can also run a model service. `llmflux serve` starts a model as a
 long-running service on a compute node and gives you an address and an API key.
 Any tool that speaks the OpenAI API, including many agent frameworks and coding
 agents, can then use a model running on *your* allocation instead of a commercial
-API. See the LLMFlux docs.
+API. Part 11 walks through it.
 
 **What about fine-tuning?** LLMFlux runs models; it doesn't train them. Before
 fine-tuning, try better prompts (with a few worked examples), grounding in your
@@ -465,7 +464,443 @@ Configuration" in the LLMFlux docs).
 
 ---
 
-## Part 9 — Before you leave
+## Going further: LLMFlux on its own
+
+Parts 3–7 used three helper scripts: `make_prompts.py` wrote the requests,
+`submit.sh` ran `llmflux run` for you, and `show_results.py` read the answers.
+For your own research you'll usually skip the helpers and use LLMFlux directly.
+Parts 9–12 show how: what goes in a request file, how to call `llmflux run`
+yourself, how to keep a model running as a service, and the rest of the
+`llmflux` commands.
+
+These parts describe **LLMFlux 2.0.0** (`llmflux --version`). The examples use
+`$WORKSHOP_ACCOUNT` and `$WORKSHOP_PARTITION`, which `workshop.env` sets for you.
+Outside the workshop, put your own account (`accounts` lists them) and partition
+in their place.
+
+---
+
+## Part 9 — What's in a request file
+
+A request file is **JSONL**: one JSON object per line, one line per request.
+The lines are long, so pretty-print one to read it:
+
+```bash
+head -1 prompts/all.jsonl | python -m json.tool
+```
+
+```json
+{
+    "custom_id": "summarize:p01",
+    "method": "POST",
+    "url": "/v1/chat/completions",
+    "body": {
+        "messages": [
+            {"role": "system", "content": "You are a science writer. ..."},
+            {"role": "user", "content": "Summarize this research abstract ...\n\nTitle: ...\nAbstract: ..."}
+        ],
+        "temperature": 0.3,
+        "max_tokens": 150
+    },
+    "metadata": {"csv_row": {"id": "p01", "...": "..."}, "dataset": "general"}
+}
+```
+
+### The top-level keys
+
+| Key | Required? | What LLMFlux does with it |
+| --- | --- | --- |
+| `custom_id` | No (a random ID if missing) | Nothing except copy it to the output. It's **your** name for the request, so you can match each answer to its input. Make it unique. |
+| `body` | Yes | The request itself. See below. |
+| `url` | No (default `/v1/chat/completions`) | Picks the kind of request: `/v1/chat/completions` reads `body.messages` (a conversation); `/v1/completions` reads `body.prompt` (plain text to continue). Any other value fails that request. |
+| `method` | No (default `POST`) | Only recorded in the output. Leave it as `POST`. |
+| `metadata` | No | Not read at all. Copied into that request's result, so it's the place for anything you want to carry through to the analysis: the source row, a sample ID, a file name. |
+
+### Inside `body`
+
+| Key | What it does | What to put |
+| --- | --- | --- |
+| `messages` | The conversation the model replies to. A list of `{"role": ..., "content": ...}`. | Usually two: a **`system`** message (who the model should be, and rules like "answer only with JSON") and a **`user`** message (the task plus the data for this item). |
+| `prompt` | The text to continue, for `/v1/completions` only. | Rarely needed; chat models expect `messages`. |
+| `temperature` | Randomness. `0` gives the same answer every time; higher values vary more. | `0` for classifying and extracting; `0.3`–`0.7` for writing. |
+| `max_tokens` | The longest reply allowed, in tokens (a token is roughly ¾ of a word). | Enough for a full answer. Too low cuts replies off mid-sentence, which also breaks JSON. |
+| `top_p` | Another randomness control. | Leave it out. |
+| `stop` | A list of strings; the model stops when it writes one. | Leave it out unless you need it. |
+| `model` | Must exactly match the engine's internal model name (e.g. `Qwen/Qwen2.5-7B-Instruct`), or the request fails. | **Leave it out.** LLMFlux fills it in from `--model`. |
+
+Settings you leave out come from the model's defaults in LLMFlux. **Any other key
+in `body` is ignored in LLMFlux 2.0.0.** That includes `response_format` (the
+"JSON mode" some APIs have), `seed`, and `tools`. To get JSON, ask for it in the
+prompt, then check what comes back, as `show_results.py` does.
+
+### What you'd change for your own work
+
+- **The `user` message**: the instructions, and the data for this one item.
+  That's the only part that changes from line to line.
+- **The `system` message**: the role and the rules. Usually the same on every line.
+- **`temperature` and `max_tokens`**, to suit the task.
+- **`custom_id`**: one unique ID per item, ideally the ID your data already has.
+
+### Writing a request file yourself
+
+Don't build JSON by hand: quotes and line breaks inside your data will break it.
+Let Python write it. Save this as `my_prompts.py` in `~/llmflux-workshop`, then
+`python my_prompts.py`:
+
+```python
+import csv
+import json
+
+with open("data/abstracts.csv") as f, open("prompts/organisms.jsonl", "w") as out:
+    for row in csv.DictReader(f):
+        request = {
+            "custom_id": row["id"],
+            "body": {
+                "messages": [
+                    {"role": "system", "content": "You are a careful research assistant. Answer only with what the text says."},
+                    {"role": "user", "content": "Which organisms, if any, does this study use? "
+                                                "Answer with a comma-separated list, or 'none'.\n\n" + row["abstract"]},
+                ],
+                "temperature": 0,
+                "max_tokens": 60,
+            },
+            "metadata": {"title": row["title"]},
+        }
+        out.write(json.dumps(request) + "\n")
+```
+
+### What comes back
+
+The output file is one JSON object. `results` has one entry per request, in the
+same order as the input file:
+
+```json
+{
+  "results": [
+    {
+      "input":    { ...your request, exactly as you wrote it... },
+      "output":   { "choices": [ { "message": { "content": "THE MODEL'S REPLY" } } ], "usage": {...} },
+      "metadata": { "model": "...", "request_latency_ms": 412.5, "retry_count": 0, ...your metadata... }
+    }
+  ],
+  "run_metrics": { "elapsed_sec": 21.4, ... }
+}
+```
+
+A request that failed after its retries has `"output": null` and an `"error"`
+message instead. To read the replies in your own script:
+
+```python
+import json
+
+data = json.load(open("results/organisms.json"))
+for result in data["results"]:
+    item = result["input"].get("custom_id")
+    if result.get("output"):
+        print(item, "->", result["output"]["choices"][0]["message"]["content"])
+    else:
+        print(item, "-> FAILED:", result.get("error"))
+```
+
+---
+
+## Part 10 — Running `llmflux run` yourself
+
+`submit.sh` only fills in the options for you. Here is the same job, typed out:
+
+```bash
+llmflux run --model Qwen2.5-7B-Instruct \
+    --input prompts/all.jsonl --output results/all-direct.json \
+    --account $WORKSHOP_ACCOUNT --partition $WORKSHOP_PARTITION --time 00:20:00
+```
+
+Only `--model` and `--input` are required, but set the others every time:
+without `--account` Slurm may reject the job, the default partition (`a100`)
+doesn't exist on Delta, and without `--output` the results land in
+`data/output/results_<timestamp>.json`.
+
+### Examples
+
+**Run the file you wrote in Part 9:**
+
+```bash
+llmflux run --model Qwen2.5-7B-Instruct \
+    --input prompts/organisms.jsonl --output results/organisms.json \
+    --account $WORKSHOP_ACCOUNT --partition $WORKSHOP_PARTITION --time 00:20:00
+```
+
+**A bigger model on one GPU.** Qwen2.5-14B-Instruct has twice the parameters.
+The first run of any model downloads its weights (about 30 GB here) before it
+starts, so give it more time:
+
+```bash
+llmflux run --model Qwen2.5-14B-Instruct \
+    --input prompts/all.jsonl --output results/all-14b.json \
+    --account $WORKSHOP_ACCOUNT --partition $WORKSHOP_PARTITION --time 01:00:00
+```
+
+**A model too big for one GPU.** At full precision a model needs about 2 GB of
+GPU memory per billion parameters, plus working room. A 32B model needs about
+65 GB, so split it across GPUs with `--gpus-per-node` (vLLM then runs it with
+tensor parallelism):
+
+```bash
+llmflux run --model Qwen2.5-32B-Instruct --gpus-per-node 2 \
+    --input prompts/all.jsonl --output results/all-32b.json \
+    --account $WORKSHOP_ACCOUNT --partition $WORKSHOP_PARTITION --time 01:30:00
+```
+
+Two of Delta's A40s (48 GB each) are enough for this. Its A100s have 40 GB each,
+so on an A100 partition use `--gpus-per-node 4`. Every extra GPU is charged to
+the allocation, so in a workshop, ask a facilitator first.
+
+**Gated models** (Llama, Gemma, MedGemma). Their makers require you to accept a
+license on HuggingFace first. Accept it on the model's HuggingFace page, create
+an access token in your HuggingFace settings, then:
+
+```bash
+export HF_TOKEN=hf_your_token_here     # this login only; don't put it in shared files
+llmflux run --model Llama-3.1-8B-Instruct \
+    --input prompts/all.jsonl --output results/all-llama.json \
+    --account $WORKSHOP_ACCOUNT --partition $WORKSHOP_PARTITION --time 01:00:00
+```
+
+**Long documents.** vLLM limits how long one request can be (its context
+length). To change that or other vLLM settings, pass them as a **JSON object**:
+
+```bash
+llmflux run --model Qwen2.5-7B-Instruct \
+    --vllm-engine-args '{"max-model-len": 32768}' \
+    --input prompts/long.jsonl --output results/long.json \
+    --account $WORKSHOP_ACCOUNT --partition $WORKSHOP_PARTITION --time 01:00:00
+```
+
+The single quotes matter. A plain string like `"--max-model-len 32768"` is not
+valid JSON, and LLMFlux silently ignores it (with only a warning in the log).
+
+**Get an email when the job ends, or use a reservation.** `--sbatch-arg KEY=VALUE`
+adds any Slurm option to the job; repeat it for more than one:
+
+```bash
+llmflux run --model Qwen2.5-7B-Instruct \
+    --input prompts/all.jsonl --output results/all-mail.json \
+    --account $WORKSHOP_ACCOUNT --partition $WORKSHOP_PARTITION --time 00:20:00 \
+    --sbatch-arg mail-type=END,FAIL --sbatch-arg mail-user=you@illinois.edu \
+    --sbatch-arg reservation=RESERVATION_NAME
+```
+
+**A large file.** LLMFlux sends requests to the model one after another, saves
+partial results as it goes, and retries a failed request:
+
+```bash
+llmflux run --model Qwen2.5-7B-Instruct \
+    --input prompts/big.jsonl --output results/big.json \
+    --account $WORKSHOP_ACCOUNT --partition $WORKSHOP_PARTITION --time 04:00:00 \
+    --batch-size 20 --save-frequency 500 --max-retries 5
+```
+
+`--save-frequency` writes partial results every N requests; keep it a multiple of
+`--batch-size`. Estimate `--time` from a small test: the Part 6 run took about
+0.5 seconds per request plus about 2 minutes to start.
+
+**See the job script LLMFlux writes.** `--debug` keeps it as `job.sh` in
+`~/llmflux-workshop`. Reading it is a good way to learn what a GPU job needs:
+
+```bash
+llmflux run --debug --model Qwen2.5-7B-Instruct \
+    --input prompts/all.jsonl --output results/all-debug.json \
+    --account $WORKSHOP_ACCOUNT --partition $WORKSHOP_PARTITION --time 00:20:00
+less ~/llmflux-workshop/job.sh
+```
+
+**Shorter commands.** LLMFlux reads its Slurm defaults from these variables:
+
+```bash
+export SLURM_ACCOUNT=$WORKSHOP_ACCOUNT SLURM_PARTITION=$WORKSHOP_PARTITION SLURM_TIME=00:20:00
+llmflux run --model Qwen2.5-7B-Instruct --input prompts/all.jsonl --output results/all-short.json
+```
+
+They last until you log out. Add the `export` line to `~/.bashrc` to keep them.
+
+### All `llmflux run` options
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `--model` | *(required)* | Model key from `llmflux show-models` |
+| `--input` | *(required)* | Your JSONL request file |
+| `--output` | `data/output/results_<time>.json` | Where to write the results |
+| `--account` | `$SLURM_ACCOUNT` | Allocation to charge |
+| `--partition` | `$SLURM_PARTITION`, else `a100` | Which nodes |
+| `--time` | `$SLURM_TIME`, else `00:30:00` | Longest the job may run |
+| `--gpus-per-node` | `1` | GPUs; more than one splits the model across them |
+| `--nodes` | `1` | Nodes; more than one splits a very large model across nodes |
+| `--mem`, `--cpus-per-task` | `32G`, `4` | Memory and CPU cores for the job |
+| `--sbatch-arg KEY=VALUE` | | Any other Slurm option, repeatable |
+| `--batch-size` | `4` | How many requests are grouped between progress checks |
+| `--save-frequency` | `50` | Write partial results every N requests |
+| `--max-retries`, `--retry-delay` | `3`, `1.0` s | Retries for a failed request |
+| `--vllm-engine-args` | | Extra vLLM settings, as a JSON object |
+| `--custom-config-path` | | A model not in the list, e.g. one you fine-tuned (vLLM only) |
+| `--engine` | `vllm` | `vllm` or `ollama` |
+| `--debug` | | Keep the generated `job.sh` |
+| `--rebuild` | | Rebuild the container image (rarely needed) |
+| `--temperature`, `--max-tokens`, `--top-p`, `--top-k` | | **Accepted but ignored in LLMFlux 2.0.0.** Set these per request in `body` (Part 9). |
+
+---
+
+## Part 11 — A model as a service: `llmflux serve`
+
+A batch job loads the model, answers a file, and stops. `llmflux serve` starts a
+model and **keeps it running** for as long as you ask, so you can send it
+requests whenever you like: from a script, a notebook, or any tool that works
+with the OpenAI API, including many agent frameworks. It uses a GPU for the whole
+time, busy or not, so ask for as long as you need and cancel it when you're done.
+
+**1. Start it.** `--email` is required: Slurm emails you when the job starts.
+
+```bash
+llmflux serve --model Qwen2.5-7B-Instruct --email you@illinois.edu \
+    --account $WORKSHOP_ACCOUNT --partition $WORKSHOP_PARTITION --time 01:00:00
+```
+
+```
+Serve job submitted: 1234567
+...
+You will receive an email at you@illinois.edu when the service is ready.
+Then run: llmflux connect 1234567
+```
+
+**2. Get the address.** Once the job is RUNNING (the email, or `llmflux jobs`):
+
+```bash
+llmflux connect 1234567
+```
+
+It waits for the model to finish loading (up to 10 minutes), then prints
+everything you need:
+
+```
+Service is ready.
+
+  Endpoint:  http://gpub004.delta.ncsa.illinois.edu:8000/v1
+  API Key:   (a long random string)
+  Model:     Qwen/Qwen2.5-7B-Instruct
+  Engine:    vllm
+```
+
+Your endpoint and key will be different. Copy them into variables:
+
+```bash
+export LLM_URL=http://...                      # the Endpoint line
+export LLM_KEY=...                             # the API Key line
+export LLM_MODEL=Qwen/Qwen2.5-7B-Instruct      # the Model line
+```
+
+**3. Talk to it from the login node with `curl`:**
+
+```bash
+curl -s $LLM_URL/models -H "Authorization: Bearer $LLM_KEY"     # is it up? what model?
+
+curl -s $LLM_URL/chat/completions \
+    -H "Authorization: Bearer $LLM_KEY" -H "Content-Type: application/json" \
+    -d '{"model": "'"$LLM_MODEL"'", "max_tokens": 100,
+         "messages": [{"role": "user", "content": "Explain a Slurm reservation in one sentence."}]}' \
+    | python -m json.tool
+```
+
+**4. Or from Python**, with the standard OpenAI client. If
+`python -c "import openai"` fails, run `pip install --user openai` first.
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(base_url=os.environ["LLM_URL"], api_key=os.environ["LLM_KEY"])
+reply = client.chat.completions.create(
+    model=os.environ["LLM_MODEL"],
+    messages=[{"role": "user", "content": "Suggest three titles for a talk on batch LLM inference."}],
+    max_tokens=150,
+)
+print(reply.choices[0].message.content)
+```
+
+This is the same code you'd write for a commercial API; only `base_url` and
+`api_key` differ. Many tools read those two from the environment, so this is
+often all it takes to point them at your model:
+
+```bash
+export OPENAI_BASE_URL=$LLM_URL OPENAI_API_KEY=$LLM_KEY
+```
+
+**From your laptop.** The endpoint is only reachable inside the cluster. To use it
+from your own machine, open an SSH tunnel through the login node. Replace
+`NODE` and `PORT` with the node name and port from the Endpoint line
+(`http://NODE:PORT/v1`), and leave that terminal open:
+
+```bash
+ssh -N -L 8000:NODE:PORT YOUR_USERNAME@login.delta.ncsa.illinois.edu
+```
+
+Then use `http://localhost:8000/v1` as the endpoint on your laptop. If
+`llmflux connect` says the node is *unreachable*, it prints a similar tunnel
+command to run on the login node.
+
+**5. Stop it** when you're done, so the GPU is released:
+
+```bash
+llmflux cancel 1234567
+```
+
+Anyone who has both the endpoint and the key can use your model on your
+allocation, so don't post them anywhere public.
+
+---
+
+## Part 12 — The other `llmflux` commands
+
+```bash
+llmflux --version                     # which LLMFlux you're running
+llmflux show-models                   # every model key you can pass to --model
+llmflux show-models | grep -i qwen    # ...just one family
+
+llmflux jobs                          # your current LLMFlux jobs
+llmflux jobs --all                    # ...including finished ones
+llmflux jobs --all --state FAILED     # ...only failures (repeat --state for more)
+
+llmflux status 1234567                # details for one job: state, times, node, files
+
+llmflux logs 1234567                  # last 100 lines of the job's output and errors
+llmflux logs 1234567 --tail 30        # ...last 30
+llmflux logs 1234567 -f               # follow it live (Ctrl-C stops watching, not the job)
+llmflux logs 1234567 --stderr-only    # ...errors only (also: --stdout-only)
+
+llmflux cancel 1234567                # stop a job
+llmflux cancel 1234567 --force        # ...if it won't stop
+```
+
+**`llmflux benchmark`** measures how fast a model runs on a given GPU. It makes
+its own test prompts, so you don't need a file:
+
+```bash
+llmflux benchmark --model Qwen2.5-7B-Instruct --num-prompts 50 \
+    --account $WORKSHOP_ACCOUNT --partition $WORKSHOP_PARTITION --time 00:30:00
+```
+
+Use it to compare models or GPU types before a big run. It takes most of the
+`llmflux run` options, including `--gpus-per-node` and `--input` (to benchmark
+with your own prompts).
+
+LLMFlux only keeps track of jobs that LLMFlux started. Slurm's own commands see
+everything:
+
+```bash
+squeue -u $USER                       # all your jobs
+sacct -X -S today --format=JobID,JobName%40,State,Elapsed   # today's jobs, finished ones too
+```
+
+---
+
+## Part 13 — Before you leave
 
 ```bash
 llmflux jobs            # make sure nothing is still running
@@ -520,6 +955,17 @@ llmflux jobs                                    # what's running
 llmflux logs JOB_ID -f                          # follow a job (Ctrl-C to stop watching)
 llmflux cancel JOB_ID                           # stop a job
 python show_results.py results/NAME.json [--csv results/NAME.csv]
+
+# LLMFlux directly (Parts 9-12)
+head -1 prompts/NAME.jsonl | python -m json.tool   # read one request
+llmflux run --model MODEL --input prompts/NAME.jsonl --output results/NAME.json \
+    --account $WORKSHOP_ACCOUNT --partition $WORKSHOP_PARTITION --time 00:20:00
+llmflux serve --model MODEL --email YOU@illinois.edu \
+    --account $WORKSHOP_ACCOUNT --partition $WORKSHOP_PARTITION --time 01:00:00
+llmflux connect JOB_ID                          # endpoint and API key for a serve job
+llmflux show-models                             # model keys for --model
+llmflux status JOB_ID                           # details for one job
+llmflux jobs --all                              # finished jobs too
 ```
 
 ---

@@ -6,8 +6,8 @@
 
 
 
-For the **"LLM Flux"** session: Tuesday Oct 6, 10:00–11:45, Track 1, Room 1030,
-at the NCSA Regional Workshop on AI. The session listing promises *"LLM workflows,
+For the **"LLM Flux"** session, first given at the NCSA AI/HPC Regional Workshop
+on Oct 6 2026 (git tag `workshop-2026-10-06`). That session listing promised *"LLM workflows,
 fine-tuning, and deployment strategies"*, so the talk is built around those three.
 
 This is a teaching talk. The goal is for people to understand
@@ -50,7 +50,7 @@ beyond chat.
 - A terminal logged in to Delta (Open OnDemand → **Clusters** → **>_Delta Shell
   Access**), with these already run:
   ```bash
-  bash /projects/bccu/llmflux-workshop/workshop/setup_workshop.sh   # once
+  bash /SHARED/FOLDER/workshop/setup_workshop.sh                    # once; the facilitator has the path
   source ~/llmflux-workshop/workshop.env                            # every login
   cd ~/llmflux-workshop                                             # run everything from here
   python make_prompts.py
@@ -243,4 +243,4 @@ For a 10–20 minute version, use the "Format A" plan in
 | Block | Adds | What happens |
 | --- | --- | --- |
 | **Live change** | +5 min | Ask Illinois Chat (or an LLMHub chat) to write a new `TASKS` entry, e.g. *"extract the study's limitations as a JSON list"*. Paste it into `make_prompts.py`, run `python make_prompts.py --task <name>` and `bash submit.sh prompts/<name>.jsonl`, and show the result in the debrief. It's the "design interactively, run in batch" pattern, live. Participants do the same thing in Part 7B. |
-| **`llmflux serve`** | +5 min | The fourth deployment strategy: your own OpenAI-compatible endpoint on your allocation, for agents and apps. Show `llmflux serve --help` and the `connect` output from one you started earlier. Don't start one live; loading takes minutes. |
+| **`llmflux serve`** | +5 min | Now part of the hands-on (Part 11 of the participant guide, in the 11:00 block). In a talk-only session: show the `connect` output from one you started before the talk, and a `curl` request to it. Don't start one live; loading takes minutes. |
