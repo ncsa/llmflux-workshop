@@ -512,7 +512,7 @@ head -1 prompts/all.jsonl | python -m json.tool
 | --- | --- | --- |
 | `custom_id` | No (a random ID if missing) | Nothing except copy it to the output. It's **your** name for the request, so you can match each answer to its input. Make it unique. |
 | `body` | Yes | The request itself. See below. |
-| `url` | No (default `/v1/chat/completions`) | Picks the kind of request: `/v1/chat/completions` reads `body.messages` (a conversation); `/v1/completions` reads `body.prompt` (plain text to continue). Any other value fails that request. |
+| `url` | No (default `/v1/chat/completions`) | Picks the kind of request: `/v1/chat/completions` reads `body.messages` (a conversation); `/v1/completions` reads `body.prompt`, which LLMFlux sends as a single user message. Any other value fails that request. |
 | `method` | No (default `POST`) | Only recorded in the output. Leave it as `POST`. |
 | `metadata` | No | Not read at all. Copied into that request's result, so it's the place for anything you want to carry through to the analysis: the source row, a sample ID, a file name. |
 
@@ -521,7 +521,7 @@ head -1 prompts/all.jsonl | python -m json.tool
 | Key | What it does | What to put |
 | --- | --- | --- |
 | `messages` | The conversation the model replies to. A list of `{"role": ..., "content": ...}`. | Usually two: a **`system`** message (who the model should be, and rules like "answer only with JSON") and a **`user`** message (the task plus the data for this item). |
-| `prompt` | The text to continue, for `/v1/completions` only. | Rarely needed; chat models expect `messages`. |
+| `prompt` | A single piece of text, for `/v1/completions` only. | Rarely needed; use `messages`. |
 | `temperature` | Randomness. `0` gives the same answer every time; higher values vary more. | `0` for classifying and extracting; `0.3`–`0.7` for writing. |
 | `max_tokens` | The longest reply allowed, in tokens (a token is roughly ¾ of a word). | Enough for a full answer. Too low cuts replies off mid-sentence, which also breaks JSON. |
 | `top_p` | Another randomness control. | Leave it out. |
@@ -529,8 +529,10 @@ head -1 prompts/all.jsonl | python -m json.tool
 | `model` | Must exactly match the engine's internal model name (e.g. `Qwen/Qwen2.5-7B-Instruct`), or the request fails. | **Leave it out.** LLMFlux fills it in from `--model`. |
 
 Settings you leave out come from the model's defaults in LLMFlux. **Any other key
-in `body` is ignored in LLMFlux 2.0.0.** That includes `response_format` (the
-"JSON mode" some APIs have), `seed`, and `tools`. To get JSON, ask for it in the
+in `body` is ignored in LLMFlux 2.0.0** ([issue #154](https://github.com/Center-for-AI-Innovation/LLMFlux/issues/154)). That includes `response_format` (the
+"JSON mode" some APIs have), `seed`, and `tools`. Also, every result says
+`"finish_reason": "stop"`, even when `max_tokens` cut the reply off, so check for
+truncated answers yourself. To get JSON, ask for it in the
 prompt, then check what comes back, as `show_results.py` does.
 
 ### What you'd change for your own work
@@ -677,7 +679,7 @@ llmflux run --model Qwen2.5-7B-Instruct \
 
 The single quotes matter. A plain string like `"--max-model-len 32768"` is not
 valid JSON: LLMFlux prints an `Invalid JSON` warning when you submit, then runs
-the job without those settings.
+the job without those settings ([issue #153](https://github.com/Center-for-AI-Innovation/LLMFlux/issues/153)).
 
 **Get an email when the job ends, or use a reservation.** `--sbatch-arg KEY=VALUE`
 adds any Slurm option to the job; repeat it for more than one:
@@ -690,7 +692,7 @@ llmflux run --model Qwen2.5-7B-Instruct \
     --sbatch-arg reservation=RESERVATION_NAME
 ```
 
-**A large file.** LLMFlux sends requests to the model one after another, saves
+**A large file.** LLMFlux sends requests to the model one after another ([issue #152](https://github.com/Center-for-AI-Innovation/LLMFlux/issues/152)), saves
 partial results to the output file every 100 requests, and tries a failed
 request up to 3 more times. The main thing to set is `--time`:
 
