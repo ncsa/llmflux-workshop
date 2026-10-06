@@ -252,9 +252,11 @@ Common rescues:
   DeltaAI (the Capacity numbers), and used with a full room on Delta in October
   2026. The tests (`python -m pytest`) cover the scripts' logic, with Slurm and
   `llmflux` faked out.
-- In LLMFlux 2.0.0, `llmflux run --temperature/--max-tokens/--top-p/--top-k` are
-  accepted but ignored; only the values in each request's `body` take effect.
-  Part 10 of the participant guide says so.
+- In LLMFlux 2.0.0, `llmflux run`'s tuning options (`--temperature`,
+  `--max-tokens`, `--top-p`, `--top-k`, `--batch-size`, `--save-frequency`,
+  `--max-retries`, `--retry-delay`) are accepted but ignored (LLMFlux issue #144).
+  Sampling settings only take effect in each request's `body`. Part 10 of the
+  participant guide says so.
 - The participant JSONL leaves `model` out of each request on purpose. LLMFlux
   rejects a request whose `body.model` doesn't exactly match the engine's internal
   name (the HuggingFace repo, for vLLM), which is a confusing error for

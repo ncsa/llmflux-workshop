@@ -676,7 +676,8 @@ llmflux run --model Qwen2.5-7B-Instruct \
 ```
 
 The single quotes matter. A plain string like `"--max-model-len 32768"` is not
-valid JSON, and LLMFlux silently ignores it (with only a warning in the log).
+valid JSON: LLMFlux prints an `Invalid JSON` warning when you submit, then runs
+the job without those settings.
 
 **Get an email when the job ends, or use a reservation.** `--sbatch-arg KEY=VALUE`
 adds any Slurm option to the job; repeat it for more than one:
@@ -690,18 +691,18 @@ llmflux run --model Qwen2.5-7B-Instruct \
 ```
 
 **A large file.** LLMFlux sends requests to the model one after another, saves
-partial results as it goes, and retries a failed request:
+partial results to the output file every 100 requests, and tries a failed
+request up to 3 more times. The main thing to set is `--time`:
 
 ```bash
 llmflux run --model Qwen2.5-7B-Instruct \
     --input prompts/big.jsonl --output results/big.json \
-    --account $WORKSHOP_ACCOUNT --partition $WORKSHOP_PARTITION --time 04:00:00 \
-    --batch-size 20 --save-frequency 500 --max-retries 5
+    --account $WORKSHOP_ACCOUNT --partition $WORKSHOP_PARTITION --time 04:00:00
 ```
 
-`--save-frequency` writes partial results every N requests; keep it a multiple of
-`--batch-size`. Estimate `--time` from a small test: the Part 6 run took about
-0.5 seconds per request plus about 2 minutes to start.
+Estimate `--time` from a small test first (`make_prompts.py --limit`, or the
+first few lines of your file): the Part 6 run took about 0.5 seconds per request,
+plus about 2 minutes to start. Longer prompts and replies take longer.
 
 **See the job script LLMFlux writes.** `--debug` keeps it as `job.sh` in
 `~/llmflux-workshop`. Reading it is a good way to learn what a GPU job needs:
@@ -736,15 +737,13 @@ They last until you log out. Add the `export` line to `~/.bashrc` to keep them.
 | `--nodes` | `1` | Nodes; more than one splits a very large model across nodes |
 | `--mem`, `--cpus-per-task` | `32G`, `4` | Memory and CPU cores for the job |
 | `--sbatch-arg KEY=VALUE` | | Any other Slurm option, repeatable |
-| `--batch-size` | `4` | How many requests are grouped between progress checks |
-| `--save-frequency` | `50` | Write partial results every N requests |
-| `--max-retries`, `--retry-delay` | `3`, `1.0` s | Retries for a failed request |
+| `--batch-size`, `--save-frequency`, `--max-retries`, `--retry-delay` | `4`, `50`, `3`, `1.0` s | Grouping, partial saves, and retries. **Accepted but ignored in LLMFlux 2.0.0** ([issue #144](https://github.com/Center-for-AI-Innovation/llmflux/issues/144)): the defaults always apply. |
 | `--vllm-engine-args` | | Extra vLLM settings, as a JSON object |
 | `--custom-config-path` | | A model not in the list, e.g. one you fine-tuned (vLLM only) |
 | `--engine` | `vllm` | `vllm` or `ollama` |
 | `--debug` | | Keep the generated `job.sh` |
 | `--rebuild` | | Rebuild the container image (rarely needed) |
-| `--temperature`, `--max-tokens`, `--top-p`, `--top-k` | | **Accepted but ignored in LLMFlux 2.0.0.** Set these per request in `body` (Part 9). |
+| `--temperature`, `--max-tokens`, `--top-p`, `--top-k` | | **Accepted but ignored in LLMFlux 2.0.0** (issue #144). Set these per request in `body` (Part 9). |
 
 ---
 
